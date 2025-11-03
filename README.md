@@ -9,9 +9,8 @@ A professional command-line interface (CLI) tool designed to efficiently downloa
 - **Interactive CLI:** A modern, keyboard-navigable menu for a smooth user experience.
 - **Broad File Support:** Extracts DOIs directly from various citation formats, including BibTeX (`.bib`), RIS (`.ris`), EndNote (`.xml`, `.enw`), JSON (`.json`), and plain text lists (`.txt`, `.csv`).
 - **Multi-Source Pipeline:** Intelligently searches for PDFs across multiple services, starting with legal open-access sources like Unpaywall and OpenAlex before falling back to others.
-- **Optional Sci-Hub Fallback:** Includes an optional, user-activated fallback to Sci-Hub for hard-to-find articles.
 - **Parallel Downloads:** Utilizes multi-threading to download multiple PDFs simultaneously, significantly speeding up the process.
-- **Smart Filenaming:** Automatically generates clean, descriptive filenames from article metadata (e.g., `Author Year - Title - DOI.pdf`).
+- **Smart Filenaming:** Automatically generates clean, descriptive filenames from article metadata (e.g., `Year - Title - DOI.pdf`).
 - **Standalone Executable:** Comes with a professional build script to compile the entire application into a single, distributable `.exe` file for Windows, complete with an icon, version info, and optional code signing.
 
 ---
