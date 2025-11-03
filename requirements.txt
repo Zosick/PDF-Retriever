@@ -1,0 +1,5 @@
+bibtexparser
+requests
+rich
+rispy
+urllib3

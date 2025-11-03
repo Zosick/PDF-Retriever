@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+*.egg-info/
+*.egg
+*.spec
+*.log
+
+# Build Artifacts
+build/
+dist/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+
+# Project Data (Ignored by default per your structure)
+data/
+downloads/
+output/
+temp/
+*.pdf
+
+# Security & Credentials
+*.pfx
+data/settings.json
