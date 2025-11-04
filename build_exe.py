@@ -258,7 +258,7 @@ def run_signing(exe_path, cli_password=None):
 
 # --- FINAL INTEGRATED HASHING FUNCTION ---
 def generate_and_save_hashes(exe_path: Path):
-    """Generates SHA2 & SHA3 hashes and saves them to a file."""
+    """Generate full internal hashes + public hash files."""
     console.rule("🧮 Generating File Hashes", style="bold blue")
 
     if not exe_path.exists():
@@ -274,7 +274,7 @@ def generate_and_save_hashes(exe_path: Path):
         "SHA3-512": hashlib.sha3_512,
     }
 
-    results = []
+    hash_results = {}
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -283,40 +283,38 @@ def generate_and_save_hashes(exe_path: Path):
     ) as progress:
         task = progress.add_task("Calculating hashes...", total=len(algorithms))
 
-        for name, algo_constructor in algorithms.items():
+        for name, algo in algorithms.items():
             progress.update(task, description=f"Calculating {name}...")
-            hasher = algo_constructor()
-            try:
-                # Use memory-safe chunking for robustness with large files
-                with open(exe_path, "rb") as f:
-                    for chunk in iter(lambda: f.read(4096), b""):
-                        hasher.update(chunk)
-                hash_value = hasher.hexdigest()
-                results.append(f"{name:<10}: {hash_value}")
-            except Exception as e:
-                console.print(f"[red]✗ Hashing error for {name}: {e}[/red]")
-                results.append(f"{name:<10}: FAILED")
-
+            h = algo()
+            with open(exe_path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    h.update(chunk)
+            hash_results[name] = h.hexdigest()
             progress.update(task, advance=1)
 
-        progress.update(task, description="[green]✓ Hashes calculated[/green]")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    # Create timestamped hash file
-    timestamp_str = datetime.now().strftime("%Y%m%d-%H%M%S")
-    hash_file_path = exe_path.parent / f"hashes_{timestamp_str}.txt"
+    # ✅ Internal log with ALL algorithms
+    full_log = exe_path.parent / f"hashes_{timestamp}.txt"
+    with open(full_log, "w", encoding="utf-8") as f:
+        f.write(f"File: {exe_path.name}\nGenerated: {datetime.now()}\n\n")
+        for alg, value in hash_results.items():
+            f.write(f"{alg:<10}: {value}\n")
 
-    try:
-        with open(hash_file_path, "w", encoding="utf-8") as f:
-            f.write(
-                f"File: {exe_path.name}\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            )
-            f.write("\n".join(results))
+    # ✅ Public hash file — SHA-256 only
+    sha256_value = hash_results["SHA-256"]
+    public_txt = exe_path.parent / "hash.txt"
+    with open(public_txt, "w", encoding="utf-8") as f:
+        f.write(f"SHA-256: {sha256_value}\n")
 
-        console.print(f"[bold green]✅ Hashes saved to: {hash_file_path}[/bold green]")
-        # Print results directly to console for immediate feedback
-        console.print("\n".join(results))
-    except Exception as e:
-        console.print(f"[red]✗ Could not save hash file: {e}[/red]")
+    # ✅ Linux/macOS style .sha256 file
+    sha256_file = exe_path.parent / f"{exe_path.name}.sha256"
+    with open(sha256_file, "w", encoding="utf-8") as f:
+        f.write(f"{sha256_value}  {exe_path.name}\n")
+
+    console.print(f"[green]✅ Internal hash log: {full_log}")
+    console.print(f"[green]✅ Public hash file: {public_txt}")
+    console.print(f"[green]✅ .sha256 checksum: {sha256_file}")
 
 
 def main():

@@ -10,7 +10,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from . import sources, config
-from .utils import safe_filename
+from .pmc_source import PubMedCentralSource
+from .doaj_source import DOAJSource
+from .zenodo_source import ZenodoSource
+from .osf_source import OSFSource
+from .crossref_source import CrossrefSource
+from .utils import safe_filename, format_authors_apa
 
 log = logging.getLogger(__name__)
 
@@ -39,13 +44,23 @@ class Downloader:
 
         self.core_source = sources.CoreApiSource(self.session, core_api_key)
         self.unpaywall_source = sources.UnpaywallSource(self.session, self.email)
+        self.pubmed_central_source = PubMedCentralSource(self.session)
+        self.doaj_source = DOAJSource(self.session)
+        self.zenodo_source = ZenodoSource(self.session)
+        self.osf_source = OSFSource(self.session)
         self.openalex_source = sources.OpenAlexSource(self.session)
         self.semantic_scholar_source = sources.SemanticScholarSource(self.session)
         self.arxiv_source = sources.ArxivSource(self.session)
+        self.crossref_source = CrossrefSource(self.session)
 
         self.metadata_sources: List[sources.Source] = [
-            self.core_source,
+            self.crossref_source,
             self.unpaywall_source,
+            self.core_source,
+            self.pubmed_central_source,
+            self.doaj_source,
+            self.zenodo_source,
+            self.osf_source,
             self.arxiv_source,
             self.openalex_source,
             self.semantic_scholar_source,
@@ -53,6 +68,11 @@ class Downloader:
 
         self.pipeline: List[sources.Source] = [
             self.core_source,
+            self.unpaywall_source,
+            self.pubmed_central_source,
+            self.doaj_source,
+            self.zenodo_source,
+            self.osf_source,
             self.openalex_source,
             self.semantic_scholar_source,
             self.arxiv_source,
@@ -72,9 +92,9 @@ class Downloader:
             log.warning("SSL certificate verification is disabled.")
 
         retries = Retry(
-            total=3,
-            backoff_factor=0.5,
-            status_forcelist=[429, 500, 502, 503, 504],
+            total=5,
+            backoff_factor=1,
+            status_forcelist=[408, 429, 500, 502, 503, 504],
         )
         adapter = HTTPAdapter(max_retries=retries)
         session.mount("https://", adapter)
@@ -84,28 +104,39 @@ class Downloader:
     def _generate_filename(self, metadata: Dict[str, Any]) -> str:
         """Generates a unique, safe filename from article metadata."""
 
+        log.debug(f"Generating filename with metadata: {metadata}")
         title = (metadata.get("title") or "Unknown Title").strip()
+        log.debug(f"Title from metadata: '{title}'")
         year = (metadata.get("year") or "Unknown").strip()
-        doi = metadata.get("doi", "unknown").replace("/", "_")
+        authors = metadata.get("authors", [])
+        # Format DOI, replacing / with _
+        doi_part = metadata.get("doi", "unknown").replace("/", "_")
 
         log.debug(f"Metadata fields: {list(metadata.keys())}")
-        log.debug(f"Using Year: '{year}', Title: '{title}'")
+        log.debug(f"Using Year: '{year}', Title: '{title}', Authors: {authors}")
+
+        author_str = format_authors_apa(authors)
 
         parts = []
 
-        if year != "Unknown":
+        if author_str != "Unknown Author" and year != "Unknown":
+            parts.append(f"{author_str}, {year}")
+        elif author_str != "Unknown Author":
+            parts.append(author_str)
+        elif year != "Unknown":
             parts.append(year)
 
         if title != "Unknown Title":
             parts.append(title)
 
-        if len(parts) > 0:
-            name_str = " - ".join(parts)
-            name = f"{name_str} - {doi}.pdf"
-        else:
-            name = f"{doi}.pdf"
+        # Always append DOI for uniqueness, even if title/author unknown
+        parts.append(doi_part)
 
-        final_name = safe_filename(name)
+        # --- FIX: Define 'name' and add .pdf extension ---
+        name = " - ".join(parts)
+        final_name = safe_filename(name) + ".pdf"
+        # --- END FIX ---
+
         log.debug(f"Final filename: '{final_name}'")
         return final_name
 
@@ -146,9 +177,23 @@ class Downloader:
                     log.debug("No citation field in metadata")
                 break
 
+        if metadata is None or not metadata.get("title") or metadata.get("title") == "Unknown Title":
+            log.debug("Metadata is incomplete, trying Crossref as fallback.")
+            crossref_meta = self.crossref_source.get_metadata(doi)
+            if crossref_meta:
+                if metadata:
+                    # Update existing metadata but don't overwrite good values
+                    existing_meta = metadata.copy()
+                    crossref_meta.update(existing_meta)
+                    metadata = crossref_meta
+                else:
+                    metadata = crossref_meta
+
         if metadata is None:
             log.warning(f"Could not find metadata for {doi}. Using DOI as fallback.")
             metadata = {"doi": doi}
+        elif not metadata.get("title") or metadata.get("title") == "Unknown Title":
+            log.warning(f"Could not find title for {doi}. Filename will be based on DOI.")
 
         filename = self._generate_filename(metadata)
         filepath = self.output_dir / filename
@@ -180,7 +225,18 @@ class Downloader:
                     "filename": str(filepath),
                 }
 
+        # Best effort: try the DOI resolver as a last resort
+        if sources.DoiResolverSource(self.session).download(doi, filepath, metadata):
+            self._record_outcome(doi, "DoiResolver", filename)
+            return {
+                "doi": doi,
+                "status": "success",
+                "source": "DoiResolver",
+                "filename": str(filepath),
+            }
+
         log.error(f"Failed to find PDF for: {doi}")
         with self._stats_lock:
             self.stats["fail"] += 1
         return {"doi": doi, "status": "failed"}
+

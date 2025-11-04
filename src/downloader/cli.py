@@ -227,9 +227,36 @@ def run_download(settings, dois):
     previous_level = logger.level
     previous_handlers = list(logger.handlers)
 
-    if not should_show_debug(settings):
-        logger.handlers = []
+    # --- THIS IS THE FIX ---
+    # We must ALWAYS remove console handlers before a Live display,
+    # otherwise they fight and break the UI.
+    # Debug logs will still go to the file handler (if configured).
+
+    # Find console handlers (RichHandler or StreamHandler)
+    console_handlers = [
+        h
+        for h in previous_handlers
+        if isinstance(h, (RichHandler, logging.StreamHandler))
+    ]
+
+    # Find file handlers (or other handlers)
+    other_handlers = [
+        h
+        for h in previous_handlers
+        if not isinstance(h, (RichHandler, logging.StreamHandler))
+    ]
+
+    # Set the logger to only use non-console handlers
+    logger.handlers = other_handlers
+
+    # If in debug mode, make sure the logger level is set to DEBUG
+    # so the file handler (if any) receives the debug messages.
+    if should_show_debug(settings):
+        logger.setLevel(logging.DEBUG)
+    else:
+        # If not in debug, silence all but critical logs
         logger.setLevel(logging.CRITICAL + 1)
+    # --- END OF FIX ---
 
     try:
         with Live(
@@ -281,6 +308,7 @@ def run_download(settings, dois):
                     progress.update(progress_task, advance=1)
                     live.update(generate_live_panel())
     finally:
+        # Restore all original handlers and level
         logger.handlers = previous_handlers
         logger.setLevel(previous_level)
 
@@ -297,9 +325,12 @@ def run_download(settings, dois):
 
     failed = [r["doi"] for r in results if r.get("status") in ("failed", "exception")]
     if failed:
-        output_dir = PROJECT_ROOT / "output"
+        # --- THIS IS THE FIX ---
+        # Use the user's selected output directory from settings
+        output_dir = Path(settings["output_dir"])
         output_dir.mkdir(parents=True, exist_ok=True)
         fp = output_dir / "failed_dois.txt"
+        # --- END OF FIX ---
         fp.write_text("\n".join(sorted(failed)))
         console.print(
             f" ⚠️ [yellow]{len(failed)} DOIs failed — see 'failed_dois.txt' in the output folder.[/yellow]"
@@ -521,7 +552,10 @@ def main():
             if not settings:
                 err("No settings yet.", {})
             else:
-                fp = PROJECT_ROOT / "output" / "failed_dois.txt"
+                # --- THIS IS THE FIX ---
+                # Look in the user's selected output directory from settings
+                fp = Path(settings.get("output_dir")) / "failed_dois.txt"
+                # --- END OF FIX ---
                 if fp.exists() and fp.read_text():
                     console.print(Rule("Failed DOIs"))
                     console.print(fp.read_text())

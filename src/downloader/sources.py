@@ -15,6 +15,7 @@ from urllib.parse import quote_plus, urljoin
 import requests
 from . import config
 from .exceptions import UnrecoverableError
+from .utils import find_pdf_link_on_page
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +66,11 @@ class Source(ABC):
         """
         tmp_path = filepath.with_suffix(".part")
         content_length = resp.headers.get("Content-Length")
+        content_type = resp.headers.get("Content-Type", "").lower()
+
+        if "application/pdf" not in content_type:
+            log.warning(f"[{self.name}] Content-Type is not PDF ({content_type})")
+            return False
 
         try:
             with tmp_path.open("wb") as fh:
@@ -119,19 +125,34 @@ class Source(ABC):
     ) -> bool:
         """Convenience method to fetch a URL and save it via the streaming helper."""
         try:
-            default_headers = {
-                "User-Agent": "AcademicPDFDownloader/1.0 (+https://github.com/example/pdf-downloader)",
-                "Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8",
-            }
+            # Use session's headers as base, then update with any provided headers
+            request_headers = self.session.headers.copy()
+            request_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
             if headers:
-                default_headers.update(headers)
+                request_headers.update(headers)
 
             self._rate_limit()
             with self.session.get(
-                url, timeout=30, stream=True, headers=default_headers
+                url, timeout=30, stream=True, headers=request_headers
             ) as r:
                 r.raise_for_status()
-                return self._save_stream(r, filepath)
+                content_type = r.headers.get("Content-Type", "").lower()
+
+                if "application/pdf" in content_type:
+                    return self._save_stream(r, filepath)
+
+                # If not a PDF, assume it's a landing page and try to find a link
+                log.debug(f"[{self.name}] URL is not a direct PDF link. Trying to find a link on the page.")
+                pdf_url = find_pdf_link_on_page(url, self.session)
+                if pdf_url:
+                    log.debug(f"[{self.name}] Found direct PDF link: {pdf_url}")
+                    with self.session.get(
+                        pdf_url, stream=True, timeout=20
+                    ) as pdf_response:
+                        pdf_response.raise_for_status()
+                        return self._save_stream(pdf_response, filepath)
+
+            return False
         except requests.RequestException as e:
             log.warning(f"[{self.name}] Fetch failed for {url}: {e}")
             return False
@@ -140,6 +161,7 @@ class Source(ABC):
         self, url: str, method: str = "GET", **kwargs
     ) -> Optional[requests.Response]:
         """Helper method for making HTTP requests with rate limiting and error handling."""
+        log.debug(f"[{self.name}] Making request: {method} {url} {kwargs}")
         try:
             self._rate_limit()
             response = self.session.request(method, url, **kwargs)
@@ -176,9 +198,13 @@ class UnpaywallSource(Source):
             title = data.get("title", "Unknown Title")
             pdf_url = (data.get("best_oa_location") or {}).get("url_for_pdf")
 
+            # Get authors
+            authors = [author.get("family") for author in data.get("z_authors", [])]
+
             meta = {
                 "year": year,
                 "title": title,
+                "authors": authors,
                 "doi": doi,
                 "_pdf_url": pdf_url,
             }
@@ -188,8 +214,9 @@ class UnpaywallSource(Source):
             return None
 
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
-        pdf_url = metadata.get("_pdf_url") if metadata else None
+        pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
+            # If _pdf_url is not in the provided metadata, try to get fresh metadata
             meta = self.get_metadata(doi)
             pdf_url = meta.get("_pdf_url") if meta else None
 
@@ -265,10 +292,12 @@ class CoreApiSource(Source):
             year = str(data.get("year", "Unknown"))
             title = data.get("title", "Unknown Title")
             pdf_url = data.get("fullTextLink")
+            authors = [author.get("name") for author in data.get("authors", [])]
 
             return {
                 "year": year,
                 "title": title,
+                "authors": authors,
                 "doi": data.get("doi", doi),
                 "_pdf_url": pdf_url,
             }
@@ -277,7 +306,7 @@ class CoreApiSource(Source):
             return None
 
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
-        pdf_url = metadata.get("_pdf_url") if metadata else None
+        pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             data = self._get_data(doi)
             pdf_url = data.get("fullTextLink") if data else None
@@ -342,10 +371,12 @@ class OpenAlexSource(Source):
             year = str(data.get("publication_year", "Unknown"))
             title = data.get("title", "Unknown Title")
             pdf_url = data.get("open_access", {}).get("oa_url")
+            authors = [author.get("au_name") for author in data.get("authorships", [])]
 
             return {
                 "year": year,
                 "title": title,
+                "authors": authors,
                 "doi": doi,
                 "_pdf_url": pdf_url,
             }
@@ -354,15 +385,17 @@ class OpenAlexSource(Source):
             return None
 
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
-        pdf_url = metadata.get("_pdf_url") if metadata else None
+        pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             try:
                 url = config.OPENALEX_API_URL.format(doi=quote_plus(doi))
                 response = self._make_request(url, timeout=10)
                 if response and response.status_code == 200:
-                    pdf_url = response.json().get("open_access", {}).get("oa_url")
-            except (requests.RequestException, json.JSONDecodeError):
-                pass
+                    data = response.json()
+                    pdf_url = data.get("open_access", {}).get("oa_url")
+            except (requests.RequestException, json.JSONDecodeError) as e:
+                log.warning(f"[{self.name}] Failed to re-fetch metadata for {doi}: {e}")
+                pass # Keep pass to continue trying other sources if this one fails
 
         if pdf_url:
             return self._fetch_and_save(pdf_url, filepath)
@@ -390,10 +423,12 @@ class SemanticScholarSource(Source):
             year = str(data.get("year", "Unknown"))
             title = data.get("title", "Unknown Title")
             pdf_url = data.get("pdfUrl")
+            authors = [author.get("name") for author in data.get("authors", [])]
 
             return {
                 "year": year,
                 "title": title,
+                "authors": authors,
                 "doi": doi,
                 "_pdf_url": pdf_url,
             }
@@ -402,15 +437,16 @@ class SemanticScholarSource(Source):
             return None
 
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
-        pdf_url = metadata.get("_pdf_url") if metadata else None
+        pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             try:
                 url = config.SEMANTIC_SCHOLAR_API_URL.format(doi=quote_plus(doi))
                 response = self._make_request(url, timeout=10)
                 if response and response.status_code == 200:
                     pdf_url = response.json().get("pdfUrl")
-            except (requests.RequestException, json.JSONDecodeError):
-                pass
+            except (requests.RequestException, json.JSONDecodeError) as e:
+                log.warning(f"[{self.name}] Failed to re-fetch metadata for {doi}: {e}")
+                pass # Keep pass to continue trying other sources if this one fails
 
         if pdf_url:
             return self._fetch_and_save(pdf_url, filepath)
@@ -458,9 +494,12 @@ class ArxivSource(Source):
             published_elem = entry.find("atom:published", self.ATOM_NS)
             year = (published_elem.text or "Unknown").split("-")[0]
 
+            authors = [author.find('atom:name', self.ATOM_NS).text for author in entry.findall('atom:author', self.ATOM_NS)]
+
             return {
                 "year": year,
                 "title": title,
+                "authors": authors,
                 "doi": doi,
             }
         except (requests.RequestException, ET.ParseError, AttributeError) as e:
@@ -492,10 +531,11 @@ class DoiResolverSource(Source):
             if not response:
                 return False
 
-            content_type = response.headers.get("Content-Type", "").lower()
-            if "pdf" in content_type or response.url.lower().endswith(".pdf"):
-                return self._save_stream(response, filepath)
+            return self._save_stream(response, filepath)
 
         except requests.RequestException:
             pass
         return False
+
+
+

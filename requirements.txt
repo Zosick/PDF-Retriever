@@ -1,5 +1,5 @@
-bibtexparser
 requests
 rich
+bibtexparser
 rispy
-urllib3
+beautifulsoup4

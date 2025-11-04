@@ -6,29 +6,29 @@ A professional command-line interface (CLI) tool designed to efficiently downloa
 
 ## ✨ Key Features
 
-* **Interactive TUI:** A modern, keyboard-navigable menu built with `rich` for a smooth user experience.
-* **Broad File Support:** Extracts DOIs directly from various citation formats, including:
-    * BibTeX (`.bib`)
-    * RIS (`.ris`)
-    * EndNote XML (`.xml`, `.enw`)
-    * Zotero JSON (`.json`)
-    * Plain text lists (`.txt`, `.csv`)
-* **Advanced Metadata Pipeline:** Intelligently fetches and combines article metadata (Title, Author, Year) from a prioritized list of **10 sources**:
-    * Crossref
-    * Unpaywall
-    * CORE
-    * PubMed Central (PMC)
-    * Directory of Open Access Journals (DOAJ)
-    * Zenodo
-    * Open Science Framework (OSF)
-    * arXiv
-    * OpenAlex
-    * Semantic Scholar
-* **Smart Download Pipeline:** If metadata is found, it attempts to download the PDF from a separate, prioritized pipeline of OA sources.
-* **Parallel Downloads:** Utilizes multi-threading to download multiple PDFs simultaneously, significantly speeding up the process.
-* **Standardized Naming:** Automatically generates clean, APA 7th-style filenames:
-    `Author et al., Year - Title - DOI.pdf`
-* **Standalone Executable:** Comes with a professional build script (`build_exe.py`) to compile the entire application into a single, distributable `.exe` file for Windows, complete with an icon, version info, and optional code signing.
+- **Interactive TUI:** A modern, keyboard-navigable menu built with `rich` for a smooth user experience.
+- **Broad File Support:** Extracts DOIs directly from various citation formats, including:
+  - BibTeX (`.bib`)
+  - RIS (`.ris`)
+  - EndNote XML (`.xml`, `.enw`)
+  - Zotero JSON (`.json`)
+  - Plain text lists (`.txt`, `.csv`)
+- **Advanced Metadata Pipeline:** Intelligently fetches and combines article metadata (Title, Author, Year) from a prioritized list of **10 sources**:
+  - Crossref
+  - Unpaywall
+  - CORE
+  - PubMed Central (PMC)
+  - Directory of Open Access Journals (DOAJ)
+  - Zenodo
+  - Open Science Framework (OSF)
+  - arXiv
+  - OpenAlex
+  - Semantic Scholar
+- **Smart Download Pipeline:** If metadata is found, it attempts to download the PDF from a separate, prioritized pipeline of OA sources.
+- **Parallel Downloads:** Utilizes multi-threading to download multiple PDFs simultaneously, significantly speeding up the process.
+- **Standardized Naming:** Automatically generates clean, APA 7th-style filenames:
+  `Author et al., Year - Title - DOI.pdf`
+- **Standalone Executable:** Comes with a professional build script (`build_exe.py`) to compile the entire application into a single, distributable `.exe` file for Windows, complete with an icon, version info, and optional code signing.
 
 ---
 
@@ -50,8 +50,9 @@ To get started, clone the repository and install the required Python packages.
     ```
 
     Activate it:
-    * On Windows: `.\venv\Scripts\activate`
-    * On macOS/Linux: `source venv/bin/activate`
+
+    - On Windows: `.\venv\Scripts\activate`
+    - On macOS/Linux: `source venv/bin/activate`
 
 3.  **Install dependencies:**
     The `requirements.txt` file should list all dependencies.
@@ -68,17 +69,31 @@ Run the application from the project's root directory:
 
 ```bash
 python -m src.downloader
+<<<<<<< HEAD
+```
+
+This will launch the interactive main menu. Use the **arrow keys** to navigate and **Enter** to select an option.
+
+- **1. Configure Settings:** Set your output directory, **Unpaywall email (Required)**, and optional CORE API key.
+- **2. Input DOIs:** Load DOIs from a citation file or enter them manually.
+- **3. Begin Download:** Start the retrieval process for all loaded DOIs.
+- **4. View Failed List:** Shows any DOIs that could not be retrieved from `failed_dois.txt`.
+- **5. Open Output Folder:** Opens your selected download folder.
+- **6. Test System Status:** Pings all 10+ APIs to ensure they are reachable.
+- # **7. Quit:** Exits the application.
+
 ````
 
 This will launch the interactive main menu. Use the **arrow keys** to navigate and **Enter** to select an option.
 
-  * **1. Configure Settings:** Set your output directory, **Unpaywall email (Required)**, and optional CORE API key.
-  * **2. Input DOIs:** Load DOIs from a citation file or enter them manually.
-  * **3. Begin Download:** Start the retrieval process for all loaded DOIs.
-  * **4. View Failed List:** Shows any DOIs that could not be retrieved from `failed_dois.txt`.
-  * **5. Open Output Folder:** Opens your selected download folder.
-  * **6. Test System Status:** Pings all 10+ APIs to ensure they are reachable.
-  * **7. Quit:** Exits the application.
+- **1. Configure Settings:** Set your output directory, **Unpaywall email (Required)**, and optional CORE API key.
+- **2. Input DOIs:** Load DOIs from a citation file or enter them manually.
+- **3. Begin Download:** Start the retrieval process for all loaded DOIs.
+- **4. View Failed List:** Shows any DOIs that could not be retrieved from `failed_dois.txt`.
+- **5. Open Output Folder:** Opens your selected download folder.
+- **6. Test System Status:** Pings all 10+ APIs to ensure they are reachable.
+- **7. Quit:** Exits the application.
+>>>>>>> 7f8335c (docs: Add EULA, update README and .gitignore)
 
 -----
 
@@ -147,42 +162,44 @@ This project gratefully acknowledges the following open data services:
 
 This project has been refactored for clarity and maintainability.
 
-```
+````
+
 PDF-Retriever-project/
 │
 ├── src/
-│   └── downloader/
-│       ├── __init__.py
-│       ├── __main__.py         # Makes the package runnable
-│       ├── cli.py              # The interactive rich-based UI
-│       ├── config.py           # API endpoints and constants
-│       ├── core.py             # The main Downloader orchestration class
-│       ├── exceptions.py
-│       ├── parsers.py          # DOI extraction from .bib, .ris, etc.
-│       ├── sources.py          # Base Source class, Unpaywall, OpenAlex, etc.
-│       ├── crossref_source.py  # Specific source logic for Crossref
-│       ├── pmc_source.py       # Specific source logic for PubMed Central
-│       ├── doaj_source.py      # Specific source logic for DOAJ
-│       ├── zenodo_source.py    # Specific source logic for Zenodo
-│       ├── osf_source.py       # Specific source logic for OSF
-│       └── utils.py            # Filename sanitizers and author formatters
+│ └── downloader/
+│ ├── **init**.py
+│ ├── **main**.py # Makes the package runnable
+│ ├── cli.py # The interactive rich-based UI
+│ ├── config.py # API endpoints and constants
+│ ├── core.py # The main Downloader orchestration class
+│ ├── exceptions.py
+│ ├── parsers.py # DOI extraction from .bib, .ris, etc.
+│ ├── sources.py # Base Source class, Unpaywall, OpenAlex, etc.
+│ ├── crossref_source.py # Specific source logic for Crossref
+│ ├── pmc_source.py # Specific source logic for PubMed Central
+│ ├── doaj_source.py # Specific source logic for DOAJ
+│ ├── zenodo_source.py # Specific source logic for Zenodo
+│ ├── osf_source.py # Specific source logic for OSF
+│ └── utils.py # Filename sanitizers and author formatters
 │
 ├── assets/
-│   └── favicon.ico
+│ └── favicon.ico
 │
-├── data/                       # (GitIgnored) Saved settings
-├── downloads/                  # (GitIgnored) Default PDF output folder
-├── output/                     # (GitIgnored) Failed DOI lists
+├── data/ # (GitIgnored) Saved settings
+├── downloads/ # (GitIgnored) Default PDF output folder
+├── output/ # (GitIgnored) Failed DOI lists
 │
-├── run.py                      # Simple entry script
-├── build_exe.py                # PyInstaller build script
+├── run.py # Simple entry script
+├── build_exe.py # PyInstaller build script
 ├── requirements.txt
 │
-├── README.md                   # This file
-├── LICENSE.txt                 # MIT License for the source code
-├── EULA.txt                    # End-User License Agreement for the executable
+├── README.md # This file
+├── LICENSE.txt # MIT License for the source code
+├── EULA.txt # End-User License Agreement for the executable
 │
 └── .gitignore
+
 ```
 
 -----
@@ -193,3 +210,4 @@ This project's source code is licensed under the [MIT License](https://opensourc
 
 
 The distributed executable (`PDF Retriever.exe`) is governed by the **End-User License Agreement**. See the `EULA.txt` file for details on your rights and responsibilities when *using* the software.
+```
