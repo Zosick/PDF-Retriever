@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import deque
+import base64
+from cryptography.fernet import Fernet
 
 try:
     import msvcrt
@@ -71,10 +73,21 @@ from .parsers import extract_dois_from_file
 from .utils import clean_doi
 from . import config
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-CONFIG_FILE = DATA_DIR / "settings.json"
+CONFIG_DIR = Path.home() / ".pdf_retriever"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+CONFIG_FILE = CONFIG_DIR / "settings.json"
+KEY_FILE = CONFIG_DIR / "key.key"
+
+def get_key():
+    if KEY_FILE.exists():
+        key = KEY_FILE.read_bytes()
+    else:
+        key = Fernet.generate_key()
+        KEY_FILE.write_bytes(key)
+    return key
+
+KEY = get_key()
+FERNET = Fernet(KEY)
 
 UI_MODES = ["research", "debug"]
 DEFAULT_UI_MODE = "research"
@@ -108,28 +121,84 @@ def err(msg, settings):
 
 
 def load_config():
+
+
     if CONFIG_FILE.exists():
+
+
         try:
-            return json.loads(CONFIG_FILE.read_text())
+
+
+            encrypted_data = CONFIG_FILE.read_bytes()
+
+
+            decrypted_data = FERNET.decrypt(encrypted_data)
+
+
+            return json.loads(decrypted_data)
+
+
         except Exception:
+
+
             console.print(
+
+
                 f"[yellow]Warning: Could not parse settings. Resetting.[/yellow]"
+
+
             )
+
+
     return None
 
 
+
+
+
 def save_config(cfg):
+
+
     save = Prompt.ask("\nSave these settings?", choices=["y", "n"], default="n")
+
+
     if save == "y":
-        CONFIG_FILE.write_text(json.dumps(cfg, indent=2))
+
+
+        encrypted_data = FERNET.encrypt(json.dumps(cfg, indent=2).encode())
+
+
+        CONFIG_FILE.write_bytes(encrypted_data)
+
+
         note(f"Settings saved to {CONFIG_FILE}", {"ui_mode": "research"})
+
+
+
+
+
+def clear_config():
+
+
+    if CONFIG_FILE.exists():
+
+
+        CONFIG_FILE.unlink()
+
+
+    if KEY_FILE.exists():
+
+
+        KEY_FILE.unlink()
+
+
+    done("Settings cleared.", {"ui_mode": "research"})
 
 
 def get_settings(cfg):
     phase("Configure Settings", cfg)
 
-    DEFAULT_DOWNLOADS_DIR = PROJECT_ROOT / "downloads"
-    DEFAULT_DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
 
     output_dir = Prompt.ask(
         "📁 Save PDFs to",
@@ -227,36 +296,7 @@ def run_download(settings, dois):
     previous_level = logger.level
     previous_handlers = list(logger.handlers)
 
-    # --- THIS IS THE FIX ---
-    # We must ALWAYS remove console handlers before a Live display,
-    # otherwise they fight and break the UI.
-    # Debug logs will still go to the file handler (if configured).
 
-    # Find console handlers (RichHandler or StreamHandler)
-    console_handlers = [
-        h
-        for h in previous_handlers
-        if isinstance(h, (RichHandler, logging.StreamHandler))
-    ]
-
-    # Find file handlers (or other handlers)
-    other_handlers = [
-        h
-        for h in previous_handlers
-        if not isinstance(h, (RichHandler, logging.StreamHandler))
-    ]
-
-    # Set the logger to only use non-console handlers
-    logger.handlers = other_handlers
-
-    # If in debug mode, make sure the logger level is set to DEBUG
-    # so the file handler (if any) receives the debug messages.
-    if should_show_debug(settings):
-        logger.setLevel(logging.DEBUG)
-    else:
-        # If not in debug, silence all but critical logs
-        logger.setLevel(logging.CRITICAL + 1)
-    # --- END OF FIX ---
 
     try:
         with Live(
@@ -325,12 +365,7 @@ def run_download(settings, dois):
 
     failed = [r["doi"] for r in results if r.get("status") in ("failed", "exception")]
     if failed:
-        # --- THIS IS THE FIX ---
-        # Use the user's selected output directory from settings
-        output_dir = Path(settings["output_dir"])
-        output_dir.mkdir(parents=True, exist_ok=True)
-        fp = output_dir / "failed_dois.txt"
-        # --- END OF FIX ---
+
         fp.write_text("\n".join(sorted(failed)))
         console.print(
             f" ⚠️ [yellow]{len(failed)} DOIs failed — see 'failed_dois.txt' in the output folder.[/yellow]"
@@ -422,7 +457,8 @@ def show_main_panel(settings, dois):
         ("4", "View Failed List"),
         ("5", "Open Output Folder"),
         ("6", "Test System Status"),
-        ("7", "Quit"),
+        ("7", "Clear Settings"),
+        ("8", "Quit"),
     ]
 
     current = 0
@@ -488,10 +524,10 @@ def show_main_panel(settings, dois):
                 current = (current + 1) % len(options)
             elif k in ("\r", "\n", "ENTER"):
                 return options[current][0]
-            elif k in ("1", "2", "3", "4", "5", "6", "7"):
+            elif k in ("1", "2", "3", "4", "5", "6", "7", "8"):
                 return k
             elif k in ("q", "\x1b"):
-                return "7"
+                return "8"
 
             live.update(render())
 
@@ -552,10 +588,7 @@ def main():
             if not settings:
                 err("No settings yet.", {})
             else:
-                # --- THIS IS THE FIX ---
-                # Look in the user's selected output directory from settings
-                fp = Path(settings.get("output_dir")) / "failed_dois.txt"
-                # --- END OF FIX ---
+
                 if fp.exists() and fp.read_text():
                     console.print(Rule("Failed DOIs"))
                     console.print(fp.read_text())
@@ -585,6 +618,11 @@ def main():
             input("\nPress Enter...")
 
         elif ch == "7":
+            clear_config()
+            settings = None
+            input("\nPress Enter...")
+
+        elif ch == "8":
             break
 
 

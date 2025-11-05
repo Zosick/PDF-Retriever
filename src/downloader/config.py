@@ -7,7 +7,7 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36",
-    "OA-PDF-Retriever/1.0 (https://github.com/user/repo; mailto:user@example.com)",
+    "OA-PDF-Retriever/1.0 (https://github.com/user/repo; mailto:175473063+Zosick@users.noreply.github.com)",
 ]
 
 UNPAYWALL_API_URL = "https://api.unpaywall.org/v2/{doi}"

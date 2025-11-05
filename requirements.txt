@@ -3,3 +3,4 @@ rich
 bibtexparser
 rispy
 beautifulsoup4
+cryptography
