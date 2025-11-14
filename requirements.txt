@@ -4,3 +4,10 @@ bibtexparser
 rispy
 beautifulsoup4
 cryptography
+beautifulsoup4
+bibtexparser
+cryptography
+downloader
+requests
+rich
+rispy
