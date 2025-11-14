@@ -39,7 +39,7 @@ To get started, clone the repository and install the required Python packages.
 1.  **Clone the repository:**
 
     ```bash
-    git clone [https://github.com/Zosick/PDF-Retriever-project.git](https://github.com/Zosick/PDF-Retriever-project.git)
+    git clone https://github.com/Zosick/PDF-Retriever-project.git
     cd PDF-Retriever-project
     ```
 
