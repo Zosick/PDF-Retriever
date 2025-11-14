@@ -2,6 +2,7 @@
 """Utility functions for the downloader."""
 
 import re
+import requests
 from .config import MAX_FILENAME_LEN
 
 

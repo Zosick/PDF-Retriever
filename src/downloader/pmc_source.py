@@ -4,6 +4,7 @@ Defines the source for PubMed Central.
 """
 import logging
 import re
+from pathlib import Path
 from typing import Dict, Any, Optional
 import requests
 from . import config
