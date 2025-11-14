@@ -365,11 +365,46 @@ def run_download(settings, dois):
 
     failed = [r["doi"] for r in results if r.get("status") in ("failed", "exception")]
     if failed:
-
+        fp = Path(settings["output_dir"]) / "failed_dois.txt"
         fp.write_text("\n".join(sorted(failed)))
         console.print(
             f" ⚠️ [yellow]{len(failed)} DOIs failed — see 'failed_dois.txt' in the output folder.[/yellow]"
         )
+        
+        # Offer to retry failed downloads
+        if len(failed) > 0 and len(failed) < len(dois):
+            retry = Prompt.ask(
+                f"\n🔄 Retry {len(failed)} failed downloads?",
+                choices=["y", "n"],
+                default="n"
+            )
+            if retry == "y":
+                console.print(f"\n[cyan]Retrying {len(failed)} failed downloads...[/cyan]\n")
+                # Retry with the failed DOIs
+                retry_results = []
+                with ThreadPoolExecutor(max_workers=settings["max_workers"]) as ex:
+                    future_map = {ex.submit(dl.download_one, doi): doi for doi in failed}
+                    
+                    for f in as_completed(future_map):
+                        try:
+                            result = f.result()
+                            retry_results.append(result)
+                            if result.get("status") == "success":
+                                console.print(f"✅ Retry successful: {result.get('doi', '')}")
+                        except Exception:
+                            pass
+                
+                # Update stats
+                retry_success = sum(1 for r in retry_results if r.get("status") == "success")
+                if retry_success > 0:
+                    console.print(f"\n[green]✅ {retry_success} additional PDFs downloaded on retry![/green]\n")
+                    
+                    # Update failed list
+                    still_failed = [r["doi"] for r in retry_results if r.get("status") == "failed"]
+                    if still_failed:
+                        fp.write_text("\n".join(sorted(still_failed)))
+                    else:
+                        fp.unlink(missing_ok=True)
 
 
 def run_status_test(settings):
@@ -517,29 +552,32 @@ def show_main_panel(settings, dois):
         )
 
     console.clear()
-    console.print("")
+    console.print(render())
 
-    with Live(render(), console=console, refresh_per_second=30, screen=False) as live:
-        while True:
-            if force_refresh:
-                force_refresh = False
-                live.update(render())
-                continue
+    while True:
+        k = get_single_key()
+        
+        # Track if we need to update the display
+        needs_update = False
 
-            k = get_single_key()
+        if k in ("\x1b[A", "H", "UP"):
+            current = (current - 1) % len(options)
+            needs_update = True
+        elif k in ("\x1b[B", "P", "DOWN"):
+            current = (current + 1) % len(options)
+            needs_update = True
+        elif k in ("\r", "\n", "ENTER"):
+            return options[current][0]
+        elif k in ("1", "2", "3", "4", "5", "6", "7", "8"):
+            return k
+        elif k in ("q", "\x1b"):
+            return "8"
 
-            if k in ("\x1b[A", "H", "UP"):
-                current = (current - 1) % len(options)
-            elif k in ("\x1b[B", "P", "DOWN"):
-                current = (current + 1) % len(options)
-            elif k in ("\r", "\n", "ENTER"):
-                return options[current][0]
-            elif k in ("1", "2", "3", "4", "5", "6", "7", "8"):
-                return k
-            elif k in ("q", "\x1b"):
-                return "8"
-
-            live.update(render())
+        # Only update display if something changed
+        if needs_update or force_refresh:
+            force_refresh = False
+            console.clear()
+            console.print(render())
 
 
 def main():

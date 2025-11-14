@@ -142,8 +142,11 @@ class Source(ABC):
                     request_headers.update(headers)
 
                 self._rate_limit()
+                # Increase timeout for large PDFs (some academic papers can be 100+ MB)
+                timeout = 90  # 90 seconds should handle most large PDFs
+                
                 with self.session.get(
-                    url, timeout=30, stream=True, headers=request_headers
+                    url, timeout=timeout, stream=True, headers=request_headers
                 ) as r:
                     r.raise_for_status()
                     content_type = r.headers.get("Content-Type", "").lower()
@@ -157,7 +160,7 @@ class Source(ABC):
                     if pdf_url:
                         log.debug(f"[{self.name}] Found direct PDF link: {pdf_url}")
                         with self.session.get(
-                            pdf_url, stream=True, timeout=20
+                            pdf_url, stream=True, timeout=timeout
                         ) as pdf_response:
                             pdf_response.raise_for_status()
                             return self._save_stream(pdf_response, filepath)

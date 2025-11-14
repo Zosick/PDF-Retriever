@@ -15,11 +15,26 @@ This is a professional command-line interface (CLI) tool designed to efficiently
 - Support parallel downloads for efficiency
 
 ## Recent Changes
-- **2025-11-14:** Initial Replit setup completed
-  - Installed Python 3.11 and all required dependencies
-  - Updated .gitignore for Replit-specific files
-  - Configured workflow to run the TUI application
-  - Created replit.md documentation
+- **2025-11-14:** Major improvements to PDF retrieval and UI
+  - **Initial Setup:**
+    - Installed Python 3.11 and all required dependencies
+    - Updated .gitignore for Replit-specific files
+    - Configured workflow to run the TUI application
+    - Fixed missing imports (requests in utils.py, Path in pmc_source.py)
+  - **PDF Retrieval Improvements:**
+    - Added retry logic with exponential backoff for network failures (up to 3 attempts)
+    - Enhanced PDF validation to detect corrupted/incomplete files (EOF marker check)
+    - Better error detection for access-denied and forbidden responses
+    - Improved robustness of download pipeline
+  - **UI/CLI Enhancements:**
+    - Fixed terminal resizing to work gracefully on all screen sizes
+    - Adaptive UI that adjusts text and layout for narrow terminals (< 80 chars)
+    - Eliminated UI flickering by disabling automatic refresh
+    - Improved cross-platform compatibility for Windows, Linux, and macOS
+    - Better screen clearing with fallback mechanisms
+  - **Code Quality:**
+    - Added proper error handling throughout
+    - Respects API terms of service with rate limiting
 
 ## Project Architecture
 
