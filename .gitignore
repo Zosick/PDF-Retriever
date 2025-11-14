@@ -30,3 +30,11 @@ logs/
 # Security & Credentials
 *.pfx
 key.key
+
+# Replit-specific
+.pythonlibs/
+.cache/
+.upm/
+.config/
+replit.nix
+.replit
