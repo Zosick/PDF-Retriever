@@ -464,17 +464,26 @@ def show_main_panel(settings, dois):
     current = 0
 
     def render():
-        terminal_width = console.size.width
+        terminal_width = max(50, console.size.width)
+        terminal_height = console.size.height
+        
+        # Adaptive UI based on terminal size
+        if terminal_width < 80:
+            title_text = "[bold cyan]PDF Retrieval[/bold cyan]"
+            welcome_text = "[bold white]PDF Downloader[/bold white]"
+        else:
+            title_text = "[bold cyan]Open-Access PDF Retrieval System[/bold cyan]"
+            welcome_text = "[bold white]Welcome to the PDF Downloader CLI[/bold white]"
 
-        welcome_message = Align.center(
-            "\n[bold white]Welcome to the PDF Downloader CLI[/bold white]\n\n"
-        )
+        welcome_message = Align.center(f"\n{welcome_text}\n\n")
         status_line = Align.center(
-            f"[dim]Settings:[/dim] {status_s} | [dim]DOIs Loaded:[/dim] {status_d}\n"
+            f"[dim]Settings:[/dim] {status_s} | [dim]DOIs:[/dim] {status_d}\n"
         )
         menu_header = Text("[ MENU ]", style="bold cyan")
 
-        separator = "[dim]" + "─" * min(40, terminal_width - 10) + "[/dim]"
+        # Calculate separator width based on terminal size
+        sep_width = max(20, min(40, terminal_width - 10))
+        separator = "[dim]" + "─" * sep_width + "[/dim]"
 
         lines = []
         for i, (key, label) in enumerate(options):
@@ -496,11 +505,12 @@ def show_main_panel(settings, dois):
             Text(""),
         )
 
-        padding = (1, max(2, terminal_width // 20))
+        # Adaptive padding based on terminal width
+        padding = (1, max(1, min(terminal_width // 20, 4)))
 
         return Panel(
             panel_content,
-            title="[bold cyan]Open-Access PDF Retrieval System[/bold cyan]",
+            title=title_text,
             title_align="center",
             border_style="grey70",
             padding=padding,
@@ -555,7 +565,11 @@ def main():
     dois = []
 
     while True:
-        os.system("cls" if os.name == "nt" else "clear")
+        try:
+            console.clear()
+        except Exception:
+            # Fallback for terminals that don't support clearing
+            os.system("cls" if os.name == "nt" else "clear")
         ch = show_main_panel(settings, dois)
 
         if ch == "1":

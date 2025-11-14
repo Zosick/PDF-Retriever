@@ -99,12 +99,21 @@ class Source(ABC):
                         or b"error" in header_lower
                         or b"not found" in header_lower
                         or b"<!doctype" in header_lower
+                        or b"access denied" in header_lower
+                        or b"forbidden" in header_lower
                     ):
                         log.warning(
                             f"[{self.name}] File appears to be an error page, not a PDF"
                         )
                         return False
                     log.warning(f"[{self.name}] File does not have PDF signature")
+                    return False
+                
+                # Check for PDF EOF marker to ensure file is complete
+                fh.seek(-1024, 2)
+                footer = fh.read(1024)
+                if b"%%EOF" not in footer:
+                    log.warning(f"[{self.name}] PDF file appears incomplete (missing EOF marker)")
                     return False
 
             tmp_path.rename(filepath)
@@ -121,41 +130,51 @@ class Source(ABC):
                 tmp_path.unlink(missing_ok=True)
 
     def _fetch_and_save(
-        self, url: str, filepath: Path, headers: Optional[Dict[str, str]] = None
+        self, url: str, filepath: Path, headers: Optional[Dict[str, str]] = None, max_retries: int = 3
     ) -> bool:
-        """Convenience method to fetch a URL and save it via the streaming helper."""
-        try:
-            # Use session's headers as base, then update with any provided headers
-            request_headers = self.session.headers.copy()
-            request_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
-            if headers:
-                request_headers.update(headers)
+        """Convenience method to fetch a URL and save it via the streaming helper with retry logic."""
+        for attempt in range(max_retries):
+            try:
+                # Use session's headers as base, then update with any provided headers
+                request_headers = self.session.headers.copy()
+                request_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
+                if headers:
+                    request_headers.update(headers)
 
-            self._rate_limit()
-            with self.session.get(
-                url, timeout=30, stream=True, headers=request_headers
-            ) as r:
-                r.raise_for_status()
-                content_type = r.headers.get("Content-Type", "").lower()
+                self._rate_limit()
+                with self.session.get(
+                    url, timeout=30, stream=True, headers=request_headers
+                ) as r:
+                    r.raise_for_status()
+                    content_type = r.headers.get("Content-Type", "").lower()
 
-                if "application/pdf" in content_type:
-                    return self._save_stream(r, filepath)
+                    if "application/pdf" in content_type:
+                        return self._save_stream(r, filepath)
 
-                # If not a PDF, assume it's a landing page and try to find a link
-                log.debug(f"[{self.name}] URL is not a direct PDF link. Trying to find a link on the page.")
-                pdf_url = find_pdf_link_on_page(url, self.session)
-                if pdf_url:
-                    log.debug(f"[{self.name}] Found direct PDF link: {pdf_url}")
-                    with self.session.get(
-                        pdf_url, stream=True, timeout=20
-                    ) as pdf_response:
-                        pdf_response.raise_for_status()
-                        return self._save_stream(pdf_response, filepath)
+                    # If not a PDF, assume it's a landing page and try to find a link
+                    log.debug(f"[{self.name}] URL is not a direct PDF link. Trying to find a link on the page.")
+                    pdf_url = find_pdf_link_on_page(url, self.session)
+                    if pdf_url:
+                        log.debug(f"[{self.name}] Found direct PDF link: {pdf_url}")
+                        with self.session.get(
+                            pdf_url, stream=True, timeout=20
+                        ) as pdf_response:
+                            pdf_response.raise_for_status()
+                            return self._save_stream(pdf_response, filepath)
 
-            return False
-        except requests.RequestException as e:
-            log.warning(f"[{self.name}] Fetch failed for {url}: {e}")
-            return False
+                return False
+            except (requests.Timeout, requests.ConnectionError) as e:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2
+                    log.debug(f"[{self.name}] Retry {attempt + 1}/{max_retries} after {wait_time}s: {e}")
+                    time.sleep(wait_time)
+                    continue
+                log.warning(f"[{self.name}] Fetch failed after {max_retries} attempts for {url}: {e}")
+                return False
+            except requests.RequestException as e:
+                log.warning(f"[{self.name}] Fetch failed for {url}: {e}")
+                return False
+        return False
 
     def _make_request(
         self, url: str, method: str = "GET", **kwargs
