@@ -40,7 +40,7 @@ To get started, clone the repository and install the required Python packages.
 
     ```bash
     git clone https://github.com/Zosick/PDF-Retriever.git
-    cd PDF-Retriever-project
+    cd PDF-Retriever
     ```
 
 2.  **Create a virtual environment (recommended):**
