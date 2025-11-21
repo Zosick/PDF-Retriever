@@ -35,7 +35,7 @@ class Downloader:
         self.email = email
         self.verify_ssl = verify_ssl
         self.session = self._create_session()
-        self.stats = {"success": 0, "fail": 0, "skipped": 0, "sources": {}}
+        self.stats: dict[str, Any] = {"success": 0, "fail": 0, "skipped": 0, "sources": {}}
         self._stats_lock = threading.Lock()
 
         # Initialize Sources

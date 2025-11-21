@@ -3,6 +3,7 @@
 Defines the source for Zenodo.
 """
 import logging
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -65,7 +66,7 @@ class ZenodoSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: str, metadata: dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
         Downloads the PDF for a given DOI from Zenodo.
         """

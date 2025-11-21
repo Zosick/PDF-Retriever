@@ -19,7 +19,7 @@ class Source(ABC):
     def __init__(self, session: requests.Session):
         self.session = session
         self.name = self.__class__.__name__.replace("Source", "")
-        self._last_request_time = 0
+        self._last_request_time = 0.0
         self._min_request_interval = 2.0
         self._lock = threading.Lock()
 
@@ -43,7 +43,7 @@ class Source(ABC):
                 return (False, "API may be unreachable")
         return (True, "No test implemented")
 
-    def _rate_limit(self):
+    def _rate_limit(self) -> None:
         with self._lock:
             elapsed = time.time() - self._last_request_time
             if elapsed < self._min_request_interval:

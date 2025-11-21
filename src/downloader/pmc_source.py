@@ -3,6 +3,7 @@
 Defines the source for PubMed Central.
 """
 import logging
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +104,9 @@ class PubMedCentralSource(Source):
                 return False
 
             pdf_url = pdf_link.get("href")
-            return self._fetch_and_save(pdf_url, filepath)
+            if pdf_url:
+                return self._fetch_and_save(pdf_url, filepath)
+            return False
 
         except (requests.RequestException, ET.ParseError) as e:
             log.warning(f"[{self.name}] Download failed for {doi}: {e}")

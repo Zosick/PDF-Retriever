@@ -8,11 +8,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 try:
-    import msvcrt
+    import msvcrt  # type: ignore
 except ImportError:
-    msvcrt = None
+    msvcrt = None  # type: ignore
 
-def get_single_key():
+def get_single_key() -> str:
     if msvcrt:
         ch = msvcrt.getch()
         if ch in {b"\x00", b"\xe0"}:
@@ -61,36 +61,36 @@ console = Console()
 DEFAULT_UI_MODE = "research"
 UI_MODES = ["research", "debug"]
 
-def should_show_debug(settings):
+def should_show_debug(settings: dict) -> bool:
     return config_mgr.should_show_debug(settings)
 
-def phase(msg, settings):
+def phase(msg: str, settings: dict) -> None:
     console.print(Rule(f"[bold cyan]{msg}", style="cyan"))
 
-def note(msg, settings):
+def note(msg: str, settings: dict) -> None:
     if settings.get("ui_mode") in ["research", "debug"]:
         console.print(f"[dim italic]{msg}[/dim italic]")
 
-def done(msg, settings):
+def done(msg: str, settings: dict) -> None:
     console.print(f"✅ [bold green]{msg}[/bold green]")
 
-def warn(msg, settings):
+def warn(msg: str, settings: dict) -> None:
     console.print(f"⚠️ [yellow]{msg}[/yellow]")
 
-def err(msg, settings):
+def err(msg: str, settings: dict) -> None:
     console.print(f"❌ [bold red]{msg}[/bold red]")
 
-def save_config(cfg):
+def save_config(cfg: dict) -> None:
     save = Prompt.ask("\nSave these settings?", choices=["y", "n"], default="n")
     if save == "y":
         config_mgr.save_config_data(cfg)
         note(f"Settings saved to {config_mgr.CONFIG_FILE}", {"ui_mode": "research"})
 
-def clear_config():
+def clear_config() -> None:
     config_mgr.clear_config_files()
     done("Settings cleared.", {"ui_mode": "research"})
 
-def get_settings(cfg):
+def get_settings(cfg: dict) -> dict:
     phase("Configure Settings", cfg)
     DEFAULT_DOWNLOADS_DIR = Path.home() / "Downloads"
     output_dir = Prompt.ask("📁 Save PDFs to", default=cfg.get("output_dir", str(DEFAULT_DOWNLOADS_DIR)))
@@ -113,7 +113,7 @@ def get_settings(cfg):
         "ui_mode": ui_mode,
     }
 
-def get_dois(settings):
+def get_dois(settings: dict) -> list:
     phase("Input Source", settings)
     file = Prompt.ask("📄 Citation file or press Enter for manual input")
     dois = set()
@@ -131,7 +131,7 @@ def get_dois(settings):
             if cleaned := clean_doi(token.strip()): dois.add(cleaned)
     return sorted(list(dois))
 
-def run_download(settings, dois):
+def run_download(settings: dict, dois: list) -> None:
     dl = Downloader(
         output_dir=settings["output_dir"],
         email=settings["email"],
@@ -139,7 +139,7 @@ def run_download(settings, dois):
         verify_ssl=settings["verify_ssl"],
     )
     results = []
-    recent_logs = deque(maxlen=5)
+    recent_logs: deque = deque(maxlen=5)
     progress = Progress(
         TextColumn("[cyan]{task.description}"),
         BarColumn(),
@@ -149,7 +149,7 @@ def run_download(settings, dois):
     progress_task = progress.add_task("Overall Progress", total=len(dois))
 
     def generate_live_panel() -> Panel:
-        renderables = [progress]
+        renderables: list = [progress]
         if recent_logs:
             renderables.insert(0, "\n".join(recent_logs))
             renderables.insert(0, "")
@@ -214,7 +214,7 @@ def run_download(settings, dois):
                 # Recursive retry logic could go here, but simplest is to re-queue
                 run_download(settings, failed)
 
-def run_status_test(settings):
+def run_status_test(settings: dict) -> None:
     phase("Source Connection Status", settings)
     logger = logging.getLogger()
     current_level = logger.level
@@ -252,7 +252,7 @@ def run_status_test(settings):
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         logging.getLogger("requests").setLevel(logging.WARNING)
 
-def show_main_panel(settings, dois):
+def show_main_panel(settings: dict | None, dois: list) -> str:
     force_refresh = False
     try:
         import signal
@@ -307,11 +307,15 @@ def show_main_panel(settings, dois):
             console.clear()
             console.print(render())
 
-def main():
+def main() -> None:
     settings = config_mgr.load_config() or None
-    log_level = "DEBUG" if config_mgr.should_show_debug(settings or {}) else "INFO"
-    requests_log_level = logging.WARNING if log_level == "DEBUG" else logging.ERROR
-    handlers = [RichHandler(console=console, show_path=False, rich_tracebacks=True, show_level=False)]
+    is_debug_mode = config_mgr.should_show_debug(settings or {})
+    console_log_level = logging.DEBUG if is_debug_mode else logging.WARNING
+    requests_log_level = logging.WARNING if is_debug_mode else logging.ERROR
+    
+    console_handler = RichHandler(console=console, show_path=False, rich_tracebacks=True, show_level=False)
+    console_handler.setLevel(console_log_level)
+    handlers: list = [console_handler]
     
     log_file = config_mgr.CONFIG_DIR / "app.log"
     try:
@@ -322,11 +326,11 @@ def main():
         handlers.append(file_handler)
     except Exception: console.print("[yellow]Warning: Could not set up file logging.[/yellow]")
 
-    logging.basicConfig(level=log_level, format="%(message)s", handlers=handlers)
+    logging.basicConfig(level=logging.DEBUG, format="%(message)s", handlers=handlers)
     logging.getLogger("urllib3").setLevel(requests_log_level)
     logging.getLogger("requests").setLevel(requests_log_level)
 
-    dois = []
+    dois: list = []
     while True:
         try:
             try: console.clear()
@@ -336,8 +340,8 @@ def main():
                 current = settings or {}
                 settings = get_settings(current)
                 if config_mgr.load_config() != settings: save_config(settings)
-                new_log_level = "DEBUG" if config_mgr.should_show_debug(settings) else "INFO"
-                logging.getLogger().setLevel(new_log_level)
+                new_console_level = logging.DEBUG if config_mgr.should_show_debug(settings) else logging.WARNING
+                console_handler.setLevel(new_console_level)
             elif ch == "2": dois = get_dois(settings or {"ui_mode": DEFAULT_UI_MODE})
             elif ch == "3":
                 if not settings: err("Configure settings first.", {})

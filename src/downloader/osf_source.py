@@ -3,6 +3,7 @@
 Defines the source for the Open Science Framework (OSF).
 """
 import logging
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -64,7 +65,7 @@ class OSFSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: str, metadata: dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
         Downloads the PDF for a given DOI from the OSF.
         """
