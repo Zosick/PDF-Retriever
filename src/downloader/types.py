@@ -1,7 +1,7 @@
 # src/downloader/types.py
 """Type definitions for the PDF downloader."""
 
-from typing import Any, TypedDict
+from typing import TypedDict
 
 
 class Metadata(TypedDict, total=False):
@@ -17,6 +17,6 @@ class Metadata(TypedDict, total=False):
 class DownloadResult(TypedDict):
     """Result of a download operation."""
     doi: str
-    status: str  # "success", "failed", "skipped", "exception"
+    status: str
     source: str | None
     filename: str | None

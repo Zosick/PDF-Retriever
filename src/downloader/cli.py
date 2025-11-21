@@ -14,9 +14,9 @@ except ImportError:
 
 def get_single_key() -> str:
     if msvcrt:
-        ch = msvcrt.getch()
+        ch = msvcrt.getch()  # type: ignore
         if ch in {b"\x00", b"\xe0"}:
-            ch2 = msvcrt.getch()
+            ch2 = msvcrt.getch()  # type: ignore
             if ch2 == b"H": return "UP"
             if ch2 == b"P": return "DOWN"
             return ""
@@ -364,7 +364,7 @@ def main() -> None:
                 else:
                     out = Path(settings["output_dir"])
                     out.mkdir(exist_ok=True)
-                    if os.name == "nt": os.startfile(out)
+                    if os.name == "nt": os.startfile(out)  # type: ignore
                     elif sys.platform == "darwin": os.system(f'open "{out}"')
                     else: os.system(f'xdg-open "{out}"')
                 input("\nPress Enter...")

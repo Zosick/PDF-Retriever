@@ -3,7 +3,6 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
