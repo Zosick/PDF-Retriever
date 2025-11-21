@@ -1,0 +1,46 @@
+import logging
+from typing import Dict, Any, Optional
+from urllib.parse import quote_plus
+import requests
+from . import config
+from .sources import Source
+
+log = logging.getLogger(__name__)
+
+class UnpaywallSource(Source):
+    def __init__(self, session: requests.Session, email: str):
+        super().__init__(session)
+        self.email = email
+        self.api_url = config.UNPAYWALL_API_URL
+
+    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+        if not self.email: return None
+        try:
+            url = config.UNPAYWALL_API_URL.format(doi=quote_plus(doi))
+            response = self._make_request(url, params={"email": self.email}, timeout=10)
+            if not response: return None
+            data = response.json()
+            
+            return {
+                "year": str(data.get("year", "Unknown")),
+                "title": data.get("title", "Unknown Title"),
+                "authors": [a.get("family") for a in data.get("z_authors", [])],
+                "doi": doi,
+                "_pdf_url": (data.get("best_oa_location") or {}).get("url_for_pdf")
+            }
+        except Exception as e:
+            log.warning(f"Unpaywall error for {doi}: {e}")
+            return None
+
+    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+        pdf_url = metadata.get("_pdf_url")
+        if not pdf_url:
+            meta = self.get_metadata(doi)
+            pdf_url = meta.get("_pdf_url") if meta else None
+        if pdf_url:
+            return self._fetch_and_save(pdf_url, filepath)
+        return False
+
+    def test_connection(self):
+        if not self.email: return (False, "Email not configured")
+        return super().test_connection()
