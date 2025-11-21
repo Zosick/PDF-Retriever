@@ -1,7 +1,9 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 from urllib.parse import quote_plus
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -12,7 +14,7 @@ class OpenAlexSource(Source):
         super().__init__(session)
         self.api_url = config.OPENALEX_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         try:
             url = config.OPENALEX_API_URL.format(doi=quote_plus(doi))
             resp = self._make_request(url, timeout=10)
@@ -27,7 +29,7 @@ class OpenAlexSource(Source):
             }
         except Exception: return None
 
-    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             meta = self.get_metadata(doi)

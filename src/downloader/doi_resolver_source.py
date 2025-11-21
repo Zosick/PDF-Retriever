@@ -1,7 +1,9 @@
 import logging
-from typing import Dict, Any
+from typing import Any
 from urllib.parse import quote_plus
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -12,7 +14,7 @@ class DoiResolverSource(Source):
         super().__init__(session)
         self.api_url = config.DOI_RESOLVER_URL
 
-    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         try:
             url = config.DOI_RESOLVER_URL.format(doi=quote_plus(doi))
             # Try to negotiate for PDF content

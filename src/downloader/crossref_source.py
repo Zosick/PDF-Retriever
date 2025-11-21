@@ -3,8 +3,10 @@
 Defines the source for Crossref.
 """
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -20,7 +22,7 @@ class CrossrefSource(Source):
         super().__init__(session)
         self.api_url = config.CROSSREF_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
         Gets the metadata for a given DOI from the Crossref API.
         """
@@ -62,7 +64,7 @@ class CrossrefSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: str, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: str, metadata: dict[str, Any]) -> bool:
         """
         This source only provides metadata, so it does not download anything.
         """

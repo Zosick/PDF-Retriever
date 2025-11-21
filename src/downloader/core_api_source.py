@@ -1,14 +1,16 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 from urllib.parse import quote_plus
+
 import requests
+
 from . import config
 from .sources import Source
 
 log = logging.getLogger(__name__)
 
 class CoreApiSource(Source):
-    def __init__(self, session: requests.Session, api_key: Optional[str]):
+    def __init__(self, session: requests.Session, api_key: str | None):
         super().__init__(session)
         self.api_key = api_key
         self.api_url = config.CORE_API_URL
@@ -23,7 +25,7 @@ class CoreApiSource(Source):
         except Exception: pass
         return None
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         data = self._get_data(doi)
         if not data: return None
         return {
@@ -34,7 +36,7 @@ class CoreApiSource(Source):
             "_pdf_url": data.get("fullTextLink")
         }
 
-    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             data = self._get_data(doi)

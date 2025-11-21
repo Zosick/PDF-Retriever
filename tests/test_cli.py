@@ -1,7 +1,8 @@
-import pytest
 import json
 from unittest.mock import patch
+
 from src.downloader import settings
+
 
 def test_should_show_debug():
     """Test the debug flag logic."""

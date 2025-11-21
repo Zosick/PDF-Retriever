@@ -3,10 +3,11 @@
 Defines the source for PubMed Central.
 """
 import logging
-import re
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -22,7 +23,7 @@ class PubMedCentralSource(Source):
         super().__init__(session)
         self.api_url = config.PUBMED_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
         Gets the metadata for a given DOI from PubMed Central.
         """
@@ -77,7 +78,7 @@ class PubMedCentralSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
         Downloads the PDF for a given DOI from PubMed Central.
         """

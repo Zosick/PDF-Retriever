@@ -1,6 +1,9 @@
-import pytest
 import textwrap
+
+import pytest
+
 from src.downloader.parsers import extract_dois_from_file
+
 
 def test_extract_bibtex(tmp_path):
     """Test extracting DOIs from a BibTeX file."""

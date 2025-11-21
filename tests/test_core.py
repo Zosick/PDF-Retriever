@@ -1,7 +1,10 @@
+import re
+
 import pytest
 import responses
-import re
+
 from src.downloader.core import Downloader
+
 
 @pytest.fixture
 def mock_output_dir(tmp_path):

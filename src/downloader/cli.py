@@ -1,11 +1,11 @@
 # src/downloader/cli.py
-import sys
+import logging
 import os
 import re
-import logging
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import sys
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 try:
     import msvcrt
@@ -41,21 +41,21 @@ def get_single_key():
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
-from rich.console import Console, Group
-from rich.prompt import Prompt
-from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
-from rich.rule import Rule
 from rich.align import Align
-from rich.table import Table
+from rich.console import Console, Group
 from rich.live import Live
 from rich.logging import RichHandler
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.prompt import Prompt
+from rich.rule import Rule
+from rich.table import Table
 from rich.text import Text
 
+from . import settings as config_mgr
 from .core import Downloader
 from .parsers import extract_dois_from_file
 from .utils import clean_doi
-from . import settings as config_mgr
 
 console = Console()
 DEFAULT_UI_MODE = "research"

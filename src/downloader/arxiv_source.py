@@ -1,8 +1,10 @@
 import logging
 import re
 import xml.etree.ElementTree as ET
-from typing import Dict, Any, Optional
+from typing import Any
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -16,12 +18,12 @@ class ArxivSource(Source):
         super().__init__(session)
         self.api_url = config.ARXIV_API_URL
 
-    def _get_arxiv_id(self, doi: str) -> Optional[str]:
+    def _get_arxiv_id(self, doi: str) -> str | None:
         if m := re.search(self.ARXIV_DOI_REGEX, doi, flags=re.IGNORECASE):
             return m.group(1)
         return None
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         arxiv_id = self._get_arxiv_id(doi)
         if not arxiv_id: return None
         try:
@@ -41,7 +43,7 @@ class ArxivSource(Source):
             }
         except Exception: return None
 
-    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         arxiv_id = self._get_arxiv_id(doi)
         if arxiv_id:
             return self._fetch_and_save(config.ARXIV_PDF_URL.format(arxiv_id=arxiv_id), filepath)

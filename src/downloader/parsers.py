@@ -1,10 +1,11 @@
 # downloader/parsers.py
 """Functions to extract DOIs from various academic citation file formats."""
 
-import re
 import json
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
+
 import bibtexparser
 import rispy
 

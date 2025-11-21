@@ -1,7 +1,9 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 from urllib.parse import quote_plus
+
 import requests
+
 from . import config
 from .sources import Source
 
@@ -13,7 +15,7 @@ class UnpaywallSource(Source):
         self.email = email
         self.api_url = config.UNPAYWALL_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         if not self.email: return None
         try:
             url = config.UNPAYWALL_API_URL.format(doi=quote_plus(doi))
@@ -32,7 +34,7 @@ class UnpaywallSource(Source):
             log.warning(f"Unpaywall error for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         pdf_url = metadata.get("_pdf_url")
         if not pdf_url:
             meta = self.get_metadata(doi)

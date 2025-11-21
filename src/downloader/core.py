@@ -3,27 +3,28 @@ import logging
 import random
 import threading
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from . import config
-from .utils import safe_filename, format_authors_apa
+from .arxiv_source import ArxivSource
+from .core_api_source import CoreApiSource
+from .crossref_source import CrossrefSource
+from .doaj_source import DOAJSource
+from .doi_resolver_source import DoiResolverSource
+from .openalex_source import OpenAlexSource
+from .osf_source import OSFSource
+from .pmc_source import PubMedCentralSource
+from .semantic_scholar_source import SemanticScholarSource
 
 # Modular Imports
 from .sources import Source
-from .crossref_source import CrossrefSource
 from .unpaywall_source import UnpaywallSource
-from .core_api_source import CoreApiSource
-from .pmc_source import PubMedCentralSource
-from .doaj_source import DOAJSource
+from .utils import format_authors_apa, safe_filename
 from .zenodo_source import ZenodoSource
-from .osf_source import OSFSource
-from .arxiv_source import ArxivSource
-from .openalex_source import OpenAlexSource
-from .semantic_scholar_source import SemanticScholarSource
-from .doi_resolver_source import DoiResolverSource
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class Downloader:
         self.doi_resolver_source = DoiResolverSource(self.session)
 
         # Define Pipelines
-        self.metadata_sources: List[Source] = [
+        self.metadata_sources: list[Source] = [
             self.crossref_source,
             self.unpaywall_source,
             self.core_source,
@@ -64,7 +65,7 @@ class Downloader:
             self.semantic_scholar_source,
         ]
 
-        self.pipeline: List[Source] = [
+        self.pipeline: list[Source] = [
             self.core_source,
             self.unpaywall_source,
             self.pubmed_central_source,
@@ -90,7 +91,7 @@ class Downloader:
         session.mount("http://", adapter)
         return session
 
-    def _generate_filename(self, metadata: Dict[str, Any]) -> str:
+    def _generate_filename(self, metadata: dict[str, Any]) -> str:
         title = (metadata.get("title") or "Unknown Title").strip()
         year = (metadata.get("year") or "Unknown").strip()
         authors = metadata.get("authors", [])
@@ -111,7 +112,7 @@ class Downloader:
             self.stats["success"] += 1
             self.stats["sources"][source_name] = self.stats["sources"].get(source_name, 0) + 1
 
-    def download_one(self, doi: str) -> Dict[str, Any]:
+    def download_one(self, doi: str) -> dict[str, Any]:
         metadata = None
         primary_pdf_url = None
 

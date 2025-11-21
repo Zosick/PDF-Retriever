@@ -1,12 +1,14 @@
 # src/downloader/sources.py
 import logging
-import time
 import threading
+import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
+from typing import Any
 from urllib.parse import urljoin
+
 import requests
+
 from .utils import find_pdf_link_on_page
 
 log = logging.getLogger(__name__)
@@ -22,13 +24,13 @@ class Source(ABC):
         self._lock = threading.Lock()
 
     @abstractmethod
-    def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         pass
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         return None
 
-    def test_connection(self) -> Tuple[bool, str]:
+    def test_connection(self) -> tuple[bool, str]:
         base_url = getattr(self, "api_url", None)
         if base_url:
             try:
@@ -89,7 +91,7 @@ class Source(ABC):
         finally:
             if tmp_path.exists(): tmp_path.unlink()
 
-    def _fetch_and_save(self, url: str, filepath: Path, headers: Optional[Dict[str, str]] = None, max_retries: int = 3) -> bool:
+    def _fetch_and_save(self, url: str, filepath: Path, headers: dict[str, str] | None = None, max_retries: int = 3) -> bool:
         for attempt in range(max_retries):
             try:
                 self._rate_limit()
@@ -114,7 +116,7 @@ class Source(ABC):
                 time.sleep((attempt + 1) * 2)
         return False
 
-    def _make_request(self, url: str, method: str = "GET", **kwargs) -> Optional[requests.Response]:
+    def _make_request(self, url: str, method: str = "GET", **kwargs) -> requests.Response | None:
         try:
             self._rate_limit()
             r = self.session.request(method, url, **kwargs)

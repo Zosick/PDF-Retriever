@@ -1,17 +1,18 @@
-import sys
+import argparse
+import getpass
+import glob
+import hashlib
 import os
+import shutil
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.prompt import Prompt
-import shutil
-import glob
-import argparse
-import getpass
-import hashlib
-from datetime import datetime
 
 console = Console()
 
@@ -55,7 +56,7 @@ def run_build():
     pyinstaller_args = []
 
     if Path(VERSION_FILE).exists():
-        console.print(f"   [green]✓ Found version information[/green]")
+        console.print("   [green]✓ Found version information[/green]")
         pyinstaller_args.append(f"--version-file={VERSION_FILE}")
     else:
         console.print(
@@ -63,7 +64,7 @@ def run_build():
         )
 
     if Path(ICON_FILE).exists():
-        console.print(f"   [green]✓ Found icon file[/green]")
+        console.print("   [green]✓ Found icon file[/green]")
         pyinstaller_args.append(f"--icon={ICON_FILE}")
     else:
         console.print(

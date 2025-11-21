@@ -4,6 +4,7 @@ Handles configuration loading, saving, and encryption.
 """
 import json
 from pathlib import Path
+
 from cryptography.fernet import Fernet
 
 CONFIG_DIR = Path.home() / ".pdf_retriever"
