@@ -27,7 +27,7 @@ class Source(ABC):
         self.session = session
         self.name = self.__class__.__name__.replace("Source", "")
         self._last_request_time = 0
-        self._min_request_interval = 0.1
+        self._min_request_interval = 2.0
 
     @abstractmethod
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
