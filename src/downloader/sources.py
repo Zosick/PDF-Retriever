@@ -7,6 +7,7 @@ import logging
 import re
 import time
 import json
+import threading  # <--- ADDED THIS
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -28,6 +29,7 @@ class Source(ABC):
         self.name = self.__class__.__name__.replace("Source", "")
         self._last_request_time = 0
         self._min_request_interval = 2.0
+        self._lock = threading.Lock()     # <--- ADDED THREAD LOCK
 
     @abstractmethod
     def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
@@ -54,10 +56,12 @@ class Source(ABC):
 
     def _rate_limit(self):
         """Basic rate limiting to be respectful to APIs"""
-        elapsed = time.time() - self._last_request_time
-        if elapsed < self._min_request_interval:
-            time.sleep(self._min_request_interval - elapsed)
-        self._last_request_time = time.time()
+        # <--- CRITICAL FIX: THREAD SAFETY --->
+        with self._lock:
+            elapsed = time.time() - self._last_request_time
+            if elapsed < self._min_request_interval:
+                time.sleep(self._min_request_interval - elapsed)
+            self._last_request_time = time.time()
 
     def _save_stream(self, resp: requests.Response, filepath: Path) -> bool:
         """
@@ -135,15 +139,13 @@ class Source(ABC):
         """Convenience method to fetch a URL and save it via the streaming helper with retry logic."""
         for attempt in range(max_retries):
             try:
-                # Use session's headers as base, then update with any provided headers
                 request_headers = self.session.headers.copy()
                 request_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
                 if headers:
                     request_headers.update(headers)
 
                 self._rate_limit()
-                # Increase timeout for large PDFs (some academic papers can be 100+ MB)
-                timeout = 90  # 90 seconds should handle most large PDFs
+                timeout = 90
                 
                 with self.session.get(
                     url, timeout=timeout, stream=True, headers=request_headers
@@ -154,7 +156,6 @@ class Source(ABC):
                     if "application/pdf" in content_type:
                         return self._save_stream(r, filepath)
 
-                    # If not a PDF, assume it's a landing page and try to find a link
                     log.debug(f"[{self.name}] URL is not a direct PDF link. Trying to find a link on the page.")
                     pdf_url = find_pdf_link_on_page(url, self.session)
                     if pdf_url:
@@ -192,7 +193,6 @@ class Source(ABC):
         except requests.RequestException as e:
             log.debug(f"[{self.name}] Request failed for {url}: {e}")
             return None
-
 
 class UnpaywallSource(Source):
     """Gets metadata and the primary Open Access PDF link from Unpaywall."""
