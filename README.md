@@ -1,6 +1,11 @@
 # Open-Access PDF Retrieval System
 
-![Release version](https://img.shields.io/github/v/release/Zosick/PDF-Retriever?style=flat-square) ![Downloads](https://img.shields.io/github/downloads/Zosick/PDF-Retriever/total?style=flat-square) ![License](https://img.shields.io/github/license/Zosick/PDF-Retriever?style=flat-square)
+![Last Commit](https://img.shields.io/github/last-commit/Zosick/PDF-Retriever?style=flat-square)
+![Forks](https://img.shields.io/github/forks/Zosick/PDF-Retriever?style=flat-square)
+![Issues](https://img.shields.io/github/issues/Zosick/PDF-Retriever?style=flat-square)
+![Contributors](https://img.shields.io/github/contributors/Zosick/PDF-Retriever?style=flat-square)
+![Stars](https://img.shields.io/github/stars/Zosick/PDF-Retriever?style=flat-square)
+![License](https://img.shields.io/github/license/Zosick/PDF-Retriever?style=flat-square)
 
 A professional command-line interface (CLI) tool designed to efficiently download open-access PDF articles using their Digital Object Identifiers (DOIs). The system features a robust, multi-source retrieval pipeline and supports a wide range of academic citation file formats.
 
