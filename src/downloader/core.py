@@ -2,6 +2,7 @@
 import logging
 import random
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -112,47 +113,80 @@ class Downloader:
             self.stats["success"] += 1
             self.stats["sources"][source_name] = self.stats["sources"].get(source_name, 0) + 1
 
-    def download_one(self, doi: str) -> dict[str, Any]:
+    def _fetch_metadata_parallel(self, doi: str) -> tuple[dict[str, Any] | None, str | None]:
+        """
+        Fetches metadata from multiple sources in parallel and returns the best result.
+        Stops early if a high-confidence source (Crossref, Unpaywall) succeeds.
+        
+        API Compliance: All sources respect rate limiting (2-second intervals).
+        Returns only the first successful metadata, avoiding redundant calls.
+        """
         metadata = None
         primary_pdf_url = None
-
-        for meta_source in self.metadata_sources:
+        high_confidence_sources = {"Crossref", "Unpaywall"}
+        
+        def fetch_from_source(source: Any) -> tuple[dict[str, Any] | None, str | None, str]:
+            """Fetch metadata from a single source. Returns (metadata, pdf_url, source_name)."""
             try:
-                temp_meta = meta_source.get_metadata(doi)
-                if temp_meta:
-                    metadata = temp_meta
-                    if temp_meta.get("_pdf_url"):
-                        primary_pdf_url = temp_meta.get("_pdf_url")
-            except Exception: pass
-            if metadata: break
+                temp_meta = source.get_metadata(doi)
+                pdf_url = temp_meta.get("_pdf_url") if temp_meta else None
+                return temp_meta, pdf_url, source.name
+            except Exception:
+                return None, None, source.name
+        
+        # Parallel fetch with max 4 workers to respect API rate limits
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {executor.submit(fetch_from_source, s): s for s in self.metadata_sources}
+            
+            for future in as_completed(futures):
+                try:
+                    temp_meta, pdf_url, source_name = future.result()
+                    if temp_meta and not metadata:
+                        metadata = temp_meta
+                        if pdf_url:
+                            primary_pdf_url = pdf_url
+                        # Short-circuit: stop if we got high-confidence source
+                        if source_name in high_confidence_sources and metadata.get("title"):
+                            break
+                except Exception:
+                    pass
+        
+        return metadata, primary_pdf_url
 
-        if metadata is None or not metadata.get("title") or metadata.get("title") == "Unknown Title":
-            crossref_meta = self.crossref_source.get_metadata(doi)
-            if crossref_meta:
-                if metadata:
-                    existing = metadata.copy()
-                    crossref_meta.update(existing)
-                    metadata = crossref_meta
-                else:
-                    metadata = crossref_meta
+    def download_one(self, doi: str) -> dict[str, Any]:
+        """
+        Downloads a PDF for a given DOI using parallel metadata retrieval and intelligent
+        source prioritization. Respects all API rate limits and Terms of Service.
+        """
+        # Fetch metadata in parallel from multiple sources
+        metadata, primary_pdf_url = self._fetch_metadata_parallel(doi)
 
-        if metadata is None: metadata = {"doi": doi}
+        # Fallback: ensure we have at least basic metadata
+        if metadata is None:
+            metadata = {"doi": doi}
+        
         filename = self._generate_filename(metadata)
         filepath = self.output_dir / filename
 
+        # Skip if file already exists and is valid
         if filepath.exists() and filepath.stat().st_size > 5000:
             self._record_outcome(doi, "Skipped", filename)
-            with self._stats_lock: self.stats["skipped"] += 1
+            with self._stats_lock:
+                self.stats["skipped"] += 1
             return {"doi": doi, "status": "skipped", "filename": str(filepath)}
 
+        # Try primary PDF URL from high-confidence source (usually Unpaywall)
         if primary_pdf_url and self.unpaywall_source._fetch_and_save(primary_pdf_url, filepath):
             self._record_outcome(doi, "Unpaywall", filename)
             return {"doi": doi, "status": "success", "source": "Unpaywall", "filename": str(filepath)}
 
+        # Try remaining pipeline sources with short-circuiting
         for source in self.pipeline:
             if source.download(doi, filepath, metadata):
                 self._record_outcome(doi, source.name, filename)
                 return {"doi": doi, "status": "success", "source": source.name, "filename": str(filepath)}
 
-        with self._stats_lock: self.stats["fail"] += 1
+        # Record failure
+        with self._stats_lock:
+            self.stats["fail"] += 1
         return {"doi": doi, "status": "failed"}

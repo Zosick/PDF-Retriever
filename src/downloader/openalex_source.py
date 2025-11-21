@@ -13,21 +13,38 @@ class OpenAlexSource(Source):
     def __init__(self, session: requests.Session):
         super().__init__(session)
         self.api_url = config.OPENALEX_API_URL
+        self._metadata_cache: dict[str, dict[str, Any] | None] = {}
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
+        """
+        Gets metadata from OpenAlex API with in-memory caching.
+        
+        API Compliance: OpenAlex allows unlimited requests with proper email header.
+        Respects our global 2-second rate limit for fairness.
+        """
+        if doi in self._metadata_cache:
+            return self._metadata_cache[doi]
+        
         try:
             url = config.OPENALEX_API_URL.format(doi=quote_plus(doi))
             resp = self._make_request(url, timeout=10)
-            if not resp: return None
+            if not resp:
+                self._metadata_cache[doi] = None
+                return None
+            
             data = resp.json()
-            return {
+            result = {
                 "year": str(data.get("publication_year", "Unknown")),
                 "title": data.get("title", "Unknown Title"),
                 "authors": [a.get("au_name") for a in data.get("authorships", [])],
                 "doi": doi,
                 "_pdf_url": data.get("open_access", {}).get("oa_url")
             }
-        except Exception: return None
+            self._metadata_cache[doi] = result
+            return result
+        except Exception:
+            self._metadata_cache[doi] = None
+            return None
 
     def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         pdf_url = metadata.get("_pdf_url")

@@ -3,6 +3,7 @@ import logging
 import threading
 import time
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -28,6 +29,9 @@ class Source(ABC):
         pass
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
+        """
+        Retrieves metadata for a DOI. Subclasses can override with caching.
+        """
         return None
 
     def test_connection(self) -> tuple[bool, str]:
