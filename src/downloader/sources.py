@@ -99,7 +99,7 @@ class Source(ABC):
         for attempt in range(max_retries):
             try:
                 self._rate_limit()
-                req_headers = self.session.headers.copy()
+                req_headers = dict(self.session.headers)
                 req_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
                 if headers: req_headers.update(headers)
                 

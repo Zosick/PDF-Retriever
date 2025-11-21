@@ -33,12 +33,29 @@ class ArxivSource(Source):
             
             root = ET.fromstring(resp.text)
             entry = root.find("atom:entry", self.ATOM_NS)
-            if entry is None: return None
+            if entry is None:
+                return None
+            
+            published_elem = entry.find("atom:published", self.ATOM_NS)
+            title_elem = entry.find("atom:title", self.ATOM_NS)
+            if published_elem is None or title_elem is None:
+                return None
+            
+            published_text = published_elem.text
+            title_text = title_elem.text
+            if published_text is None or title_text is None:
+                return None
+            
+            authors = []
+            for author_elem in entry.findall('atom:author', self.ATOM_NS):
+                name_elem = author_elem.find('atom:name', self.ATOM_NS)
+                if name_elem is not None and name_elem.text is not None:
+                    authors.append(name_elem.text)
             
             return {
-                "year": entry.find("atom:published", self.ATOM_NS).text.split("-")[0],
-                "title": entry.find("atom:title", self.ATOM_NS).text.strip().replace("\n", " "),
-                "authors": [a.find('atom:name', self.ATOM_NS).text for a in entry.findall('atom:author', self.ATOM_NS)],
+                "year": published_text.split("-")[0],
+                "title": title_text.strip().replace("\n", " "),
+                "authors": authors,
                 "doi": doi
             }
         except Exception: return None

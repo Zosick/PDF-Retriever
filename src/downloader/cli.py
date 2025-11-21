@@ -349,12 +349,15 @@ def main() -> None:
                 else: run_download(settings, dois)
                 input("\nPress Enter...")
             elif ch == "4":
-                fp = Path(settings.get("output_dir", ".")) / "failed_dois.txt"
-                if not settings: err("No settings yet.", {})
-                elif fp.exists() and fp.read_text():
-                    console.print(Rule("Failed DOIs"))
-                    console.print(fp.read_text())
-                else: done("No failed DOIs list found.", {})
+                if not settings:
+                    err("No settings yet.", {})
+                else:
+                    fp = Path(settings.get("output_dir", ".")) / "failed_dois.txt"
+                    if fp.exists() and fp.read_text():
+                        console.print(Rule("Failed DOIs"))
+                        console.print(fp.read_text())
+                    else:
+                        done("No failed DOIs list found.", {})
                 input("\nPress Enter...")
             elif ch == "5":
                 if not settings: err("No settings yet.", {})
