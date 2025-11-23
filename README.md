@@ -7,11 +7,14 @@
 ![Stars](https://img.shields.io/github/stars/Zosick/PDF-Retriever?style=flat-square)
 ![License](https://img.shields.io/github/license/Zosick/PDF-Retriever?style=flat-square)
 
-A professional command-line interface (CLI) tool designed to efficiently download open-access PDF articles using their Digital Object Identifiers (DOIs). The system features a robust, multi-source retrieval pipeline and supports a wide range of academic citation file formats.
+A modern graphical user interface (GUI) application designed to efficiently download open-access PDF articles using their Digital Object Identifiers (DOIs). The system features a robust, multi-source retrieval pipeline and supports a wide range of academic citation file formats.
+
+> [!NOTE]
+> **Migration to GUI**: This project is transitioning from a command-line interface to a full-featured GUI using CustomTkinter for an improved user experience.
 
 ## ✨ Key Features
 
-- **Interactive TUI:** A modern, keyboard-navigable menu built with `rich` for a smooth user experience.
+- **Modern GUI:** A sleek, user-friendly graphical interface built with `CustomTkinter` for an intuitive experience.
 - **Broad File Support:** Extracts DOIs directly from various citation formats, including:
   - BibTeX (`.bib`)
   - RIS (`.ris`)
@@ -29,6 +32,7 @@ A professional command-line interface (CLI) tool designed to efficiently downloa
   - arXiv
   - OpenAlex
   - Semantic Scholar
+- **Parallel Metadata Fetching:** Concurrently queries multiple metadata sources to find the best available metadata and PDF links faster.
 - **Smart Download Pipeline:** If metadata is found, it attempts to download the PDF from a separate, prioritized pipeline of OA sources.
 - **Parallel Downloads:** Utilizes multi-threading to download multiple PDFs simultaneously, significantly speeding up the process.
 - **Standardized Naming:** Automatically generates clean, APA 7th-style filenames:
@@ -72,21 +76,26 @@ To get started, clone the repository and install the required Python packages.
 
 ## 💻 Usage
 
-Run the application from the project's root directory:
+Run the GUI application from the project's root directory:
 
 ```bash
-python -m src.downloader
+python -m src.downloader.gui
 ```
 
-This will launch the interactive main menu. Use the **arrow keys** to navigate and **Enter** to select an option.
+Or use the standalone executable (after building):
 
-- **1. Configure Settings:** Set your output directory, **Unpaywall email (Required)**, and optional CORE API key.
-- **2. Input DOIs:** Load DOIs from a citation file or enter them manually.
-- **3. Begin Download:** Start the retrieval process for all loaded DOIs.
-- **4. View Failed List:** Shows any DOIs that could not be retrieved from `failed_dois.txt`.
-- **5. Open Output Folder:** Opens your selected download folder.
-- **6. Test System Status:** Pings all 10+ APIs to ensure they are reachable.
-- **7. Quit:** Exits the application.
+```bash
+.\dist\"PDF Retriever.exe"
+```
+
+### GUI Features:
+
+- **Settings Panel:** Configure output directory, Unpaywall email (Required), CORE API key, SSL settings, and parallel download count.
+- **DOI Input:** Load DOIs from citation files (.bib, .ris, .json, etc.) or paste them directly.
+- **Real-time Progress:** Live progress bar and detailed logging of each download.
+- **Retry Failed Downloads:** Automatically load and retry previously failed DOIs.
+- **System Status Check:** Test connectivity to all 10+ APIs with one click.
+- **Open Output Folder:** Quick access to your downloaded PDFs.
 
 ---
 
@@ -165,15 +174,28 @@ PDF-Retriever-project/
 │       ├── cli.py              # The interactive rich-based UI
 │       ├── config.py           # API endpoints and constants
 │       ├── core.py             # The main Downloader orchestration class
+│       ├── download_manager.py # Threaded download manager
 │       ├── exceptions.py
+│       ├── gui.py              # CustomTkinter GUI
 │       ├── parsers.py          # DOI extraction from .bib, .ris, etc.
-│       ├── sources.py          # Base Source class, Unpaywall, OpenAlex, etc.
-│       ├── crossref_source.py  # Specific source logic for Crossref
-│       ├── pmc_source.py       # Specific source logic for PubMed Central
-│       ├── doaj_source.py      # Specific source logic for DOAJ
-│       ├── zenodo_source.py    # Specific source logic for Zenodo
-│       ├── osf_source.py       # Specific source logic for OSF
-│       └── utils.py            # Filename sanitizers and author formatters
+│       ├── protocol.py         # Protocol definitions
+│       ├── settings.py         # Settings models
+│       ├── settings_manager.py # Settings persistence
+│       ├── sources.py          # Abstract Base Source class
+│       ├── tui.py              # Terminal UI components
+│       ├── types.py            # Type definitions
+│       ├── utils.py            # Filename sanitizers and author formatters
+│       ├── arxiv_source.py     # Arxiv source
+│       ├── core_api_source.py  # CORE API source
+│       ├── crossref_source.py  # Crossref source
+│       ├── doaj_source.py      # DOAJ source
+│       ├── doi_resolver_source.py # Direct DOI resolution
+│       ├── openalex_source.py  # OpenAlex source
+│       ├── osf_source.py       # OSF source
+│       ├── pmc_source.py       # PubMed Central source
+│       ├── semantic_scholar_source.py # Semantic Scholar source
+│       ├── unpaywall_source.py # Unpaywall source
+│       └── zenodo_source.py    # Zenodo source
 │
 ├── assets/
 │   └── favicon.ico
