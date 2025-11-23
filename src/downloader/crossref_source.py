@@ -8,11 +8,8 @@ from typing import Any
 
 import requests
 
-<<<<<<< HEAD
 # --- MODIFIED: Added quote_plus ---
 from urllib.parse import quote_plus
-=======
->>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8
 from . import config
 from .sources import Source
 
@@ -77,40 +74,10 @@ class CrossrefSource(Source):
             message = data.get("message", {})
             log.debug(f"[{self.name}] Message for {doi}: {message}")
 
-<<<<<<< HEAD
-            title = message.get("title", ["Unknown Title"])[0]
-
-            year = None
-            if (
-                "published-print" in message
-                and "date-parts" in message["published-print"]
-            ):
-                year = message["published-print"]["date-parts"][0][0]
-            elif (
-                "published-online" in message
-                and "date-parts" in message["published-online"]
-            ):
-                year = message["published-online"]["date-parts"][0][0]
-            elif "issued" in message and "date-parts" in message["issued"]:
-                year = message["issued"]["date-parts"][0][0]
-
-            authors = [
-                f"{author.get('given', '')} {author.get('family', '')}"
-                for author in message.get("author", [])
-            ]
-
-            return {
-                "title": title,
-                "year": str(year) if year else "Unknown",
-                "authors": authors,
-                "doi": doi,
-            }
-=======
             result = self._parse_metadata(message)
             result["doi"] = doi
             self._metadata_cache[doi] = result
             return result
->>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8
 
         except (requests.RequestException, ValueError) as e:
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")

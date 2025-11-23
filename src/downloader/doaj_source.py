@@ -8,11 +8,8 @@ from typing import Any
 
 import requests
 
-<<<<<<< HEAD
 # --- MODIFIED: Added quote_plus ---
 from urllib.parse import quote_plus
-=======
->>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8
 from . import config
 from .sources import Source
 
