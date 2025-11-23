@@ -12,8 +12,8 @@ USER_AGENTS = [
 
 UNPAYWALL_API_URL = "https://api.unpaywall.org/v2/{doi}"
 OPENALEX_API_URL = "https://api.openalex.org/works/https://doi.org/{doi}"
-SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/v1/paper/{doi}"
-CORE_API_URL = "https://api.core.ac.uk/v3/works/{doi}"
+SEMANTIC_SCHOLAR_API_URL = "https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}"
+CORE_API_URL = "https://api.core.ac.uk/v3/works/doi:{doi}"
 ARXIV_API_URL = "http://export.arxiv.org/api/query"
 ARXIV_PDF_URL = "https://arxiv.org/pdf/{arxiv_id}.pdf"
 DOI_RESOLVER_URL = "https://doi.org/{doi}"

@@ -25,7 +25,7 @@ class SemanticScholarSource(Source):
                 "title": data.get("title", "Unknown Title"),
                 "authors": [a.get("name") for a in data.get("authors", [])],
                 "doi": doi,
-                "_pdf_url": data.get("pdfUrl")
+                "_pdf_url": (data.get("openAccessPdf") or {}).get("url") or data.get("pdfUrl")
             }
         except Exception: return None
 
