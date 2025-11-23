@@ -16,13 +16,15 @@ from datetime import datetime
 console = Console()
 
 # --- Configuration ---
-MAIN_SCRIPT = "run.py"
-EXE_NAME = "PDF Retriever.exe"
-VERSION_FILE = "version_info.txt"
-ICON_FILE = "assets/favicon.ico"
+SCRIPT_DIR = Path(__file__).parent.resolve()  # Get script's absolute directory
 
-DIST_PATH = Path("dist")
-BUILD_PATH = Path("build")
+MAIN_SCRIPT = SCRIPT_DIR / "run.py"
+EXE_NAME = "PDF Retriever.exe"
+VERSION_FILE = SCRIPT_DIR / "version_info.txt"
+ICON_FILE = SCRIPT_DIR / "assets/favicon.ico"
+
+DIST_PATH = SCRIPT_DIR / "dist"
+BUILD_PATH = SCRIPT_DIR / "build"
 EXE_PATH = DIST_PATH / EXE_NAME
 # ---------------------
 
@@ -35,8 +37,9 @@ def clean_build_artifacts():
             shutil.rmtree(DIST_PATH)
         if BUILD_PATH.exists():
             shutil.rmtree(BUILD_PATH)
-        for f in glob.glob("*.spec"):
-            Path(f).unlink()
+        # Search for .spec files in the script's directory
+        for f in SCRIPT_DIR.glob("*.spec"):
+            f.unlink()
         console.print("[green]✓ Cleanup complete.[/green]")
     except Exception as e:
         console.print(f"[yellow]⚠ Could not clean all artifacts: {e}[/yellow]")
@@ -48,13 +51,13 @@ def run_build():
     clean_build_artifacts()
 
     console.print("Verifying required files...")
-    if not Path(MAIN_SCRIPT).exists():
+    if not MAIN_SCRIPT.exists():
         console.print(f"[red]✗ Error: Main script '{MAIN_SCRIPT}' not found.[/red]")
         return False
 
     pyinstaller_args = []
 
-    if Path(VERSION_FILE).exists():
+    if VERSION_FILE.exists():
         console.print(f"   [green]✓ Found version information[/green]")
         pyinstaller_args.append(f"--version-file={VERSION_FILE}")
     else:
@@ -62,7 +65,7 @@ def run_build():
             f"   [yellow]⚠ Version file '{VERSION_FILE}' not found, building without metadata.[/yellow]"
         )
 
-    if Path(ICON_FILE).exists():
+    if ICON_FILE.exists():
         console.print(f"   [green]✓ Found icon file[/green]")
         pyinstaller_args.append(f"--icon={ICON_FILE}")
     else:
@@ -73,24 +76,27 @@ def run_build():
     pyinstaller_args.extend(
         [
             "--onefile",
-            "--console",
+            "--windowed",
             f"--name={EXE_NAME.replace('.exe', '')}",
             "--clean",
             "--noconfirm",
+            # --- ADD THIS LINE ---
+            f"--add-data={ICON_FILE}{os.pathsep}assets",
+            # --- END OF ADDED LINE ---
             "--hidden-import=bibtexparser",
             "--hidden-import=rispy",
             "--hidden-import=requests",
             "--hidden-import=msvcrt",
-            "--paths=src",
+            f"--paths={SCRIPT_DIR / 'src'}",  # Use absolute path for src
             "--exclude-module=tests",
             "--exclude-module=pytest",
-            MAIN_SCRIPT,
+            str(MAIN_SCRIPT),  # Pass the absolute path to the script
         ]
     )
 
     pyinstaller_cmd = [sys.executable, "-m", "PyInstaller"] + pyinstaller_args
 
-    console.print(f"\nRunning PyInstaller for [cyan]{MAIN_SCRIPT}[/cyan]...")
+    console.print(f"\nRunning PyInstaller for [cyan]{MAIN_SCRIPT.name}[/cyan]...")
     try:
         with Progress(
             SpinnerColumn(),
@@ -170,7 +176,7 @@ def run_signing(exe_path, cli_password=None):
     """Run code signing by automatically locating the .pfx and signtool.exe files."""
     console.rule("🔐 Code Signing", style="bold yellow")
 
-    pfx_files = list(Path(".").rglob("*.pfx"))
+    pfx_files = list(SCRIPT_DIR.rglob("*.pfx"))  # Use SCRIPT_DIR
     if not pfx_files:
         console.print(
             "[yellow]⚠ Signing skipped: No .pfx certificate file found.[/yellow]"
@@ -332,7 +338,7 @@ def main():
 
     if EXE_PATH.exists():
         # --- Signing Logic ---
-        can_sign = any(Path(".").rglob("*.pfx")) and find_signtool()
+        can_sign = any(SCRIPT_DIR.rglob("*.pfx")) and find_signtool()  # Use SCRIPT_DIR
         should_sign = False
 
         if args.password:

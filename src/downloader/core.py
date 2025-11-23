@@ -7,8 +7,10 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Any
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+
+# Import the impersonation library
+from curl_cffi import requests as requests_impersonate
+
 from . import sources, config
 from .pmc_source import PubMedCentralSource
 from .doaj_source import DOAJSource
@@ -16,15 +18,13 @@ from .zenodo_source import ZenodoSource
 from .osf_source import OSFSource
 from .crossref_source import CrossrefSource
 from .utils import safe_filename, format_authors_apa
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 log = logging.getLogger(__name__)
 
 
 class Downloader:
-    """
-    Manages the PDF download pipeline by orchestrating different sources.
-    It handles session creation, filename generation, and download statistics.
-    """
+    """Manages the PDF download pipeline and metadata orchestration."""
 
     def __init__(
         self,
@@ -42,6 +42,7 @@ class Downloader:
         self.stats = {"success": 0, "fail": 0, "skipped": 0, "sources": {}}
         self._stats_lock = threading.Lock()
 
+        # Initialize sources
         self.core_source = sources.CoreApiSource(self.session, core_api_key)
         self.unpaywall_source = sources.UnpaywallSource(self.session, self.email)
         self.pubmed_central_source = PubMedCentralSource(self.session)
@@ -79,164 +80,164 @@ class Downloader:
             sources.DoiResolverSource(self.session),
         ]
 
+    # -------------------------------------------------------------------------
+    # Session and helpers
+    # -------------------------------------------------------------------------
+
     def _create_session(self) -> requests.Session:
-        """Creates a requests.Session with a user-agent and robust retry logic."""
-        session = requests.Session()
-        session.headers["User-Agent"] = random.choice(config.USER_AGENTS)
+        """
+        Creates a session that impersonates a real browser to bypass
+        client-fingerprinting (e.g., JA3/TLS fingerprinting).
+        """
+
+        session = requests_impersonate.Session(impersonate="chrome110")
         session.verify = self.verify_ssl
 
         if not self.verify_ssl:
             import urllib3
 
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-            log.warning("SSL certificate verification is disabled.")
+            log.warning("SSL verification disabled.")
 
-        retries = Retry(
-            total=5,
-            backoff_factor=1,
-            status_forcelist=[408, 429, 500, 502, 503, 504],
-        )
-        adapter = HTTPAdapter(max_retries=retries)
-        session.mount("https://", adapter)
-        session.mount("http://", adapter)
         return session
 
     def _generate_filename(self, metadata: Dict[str, Any]) -> str:
-        """Generates a unique, safe filename from article metadata."""
-
-        log.debug(f"Generating filename with metadata: {metadata}")
         title = (metadata.get("title") or "Unknown Title").strip()
-        log.debug(f"Title from metadata: '{title}'")
         year = (metadata.get("year") or "Unknown").strip()
         authors = metadata.get("authors", [])
-        # Format DOI, replacing / with _
         doi_part = metadata.get("doi", "unknown").replace("/", "_")
-
-        log.debug(f"Metadata fields: {list(metadata.keys())}")
-        log.debug(f"Using Year: '{year}', Title: '{title}', Authors: {authors}")
-
         author_str = format_authors_apa(authors)
 
         parts = []
-
         if author_str != "Unknown Author" and year != "Unknown":
             parts.append(f"{author_str}, {year}")
         elif author_str != "Unknown Author":
             parts.append(author_str)
         elif year != "Unknown":
             parts.append(year)
-
         if title != "Unknown Title":
             parts.append(title)
-
-        # Always append DOI for uniqueness, even if title/author unknown
         parts.append(doi_part)
 
-        # --- FIX: Define 'name' and add .pdf extension ---
         name = " - ".join(parts)
-        final_name = safe_filename(name) + ".pdf"
-        # --- END FIX ---
-
-        log.debug(f"Final filename: '{final_name}'")
-        return final_name
+        return safe_filename(name) + ".pdf"
 
     def _record_outcome(self, doi: str, source_name: str, filename: str):
-        """Thread-safe method to record a successful download."""
-        log.info(f"Success ({source_name}): {doi} -> {filename}")
         with self._stats_lock:
             self.stats["success"] += 1
             self.stats["sources"][source_name] = (
                 self.stats["sources"].get(source_name, 0) + 1
             )
+        log.info(f"Success ({source_name}): {doi} -> {filename}")
 
-    def download_one(self, doi: str) -> Dict[str, Any]:
-        """
-        Runs the complete download pipeline for a single DOI.
-        """
-        log.debug(f"Processing DOI: {doi}")
+    # -------------------------------------------------------------------------
+    # Download logic (with cancel support + APA citation)
+    # -------------------------------------------------------------------------
+    def download_one(self, doi: str, cancel_event: threading.Event) -> Dict[str, Any]:
+        """Runs full download pipeline for one DOI with cancel support."""
+        if cancel_event.is_set():
+            return {"doi": doi, "status": "error", "message": "Cancelled before start"}
 
         metadata = None
         primary_pdf_url = None
 
         for meta_source in self.metadata_sources:
-            log.debug(f"Trying metadata source: {meta_source.name}")
+            if cancel_event.is_set():
+                return {
+                    "doi": doi,
+                    "status": "error",
+                    "message": "Cancelled during metadata fetch",
+                }
             try:
                 temp_meta = meta_source.get_metadata(doi)
                 if temp_meta:
                     metadata = temp_meta
-                    if temp_meta.get("_pdf_url"):
-                        primary_pdf_url = temp_meta.get("_pdf_url")
+                    primary_pdf_url = temp_meta.get("_pdf_url")
             except Exception as e:
-                log.warning(f"Metadata source {meta_source.name} failed: {e}")
-
+                log.warning(f"{meta_source.name} metadata failed: {e}")
             if metadata:
-                log.debug(f"Got metadata from {meta_source.name}")
-                if "citation" in metadata:
-                    log.debug(f"Citation field: '{metadata['citation']}'")
-                else:
-                    log.debug("No citation field in metadata")
                 break
 
-        if metadata is None or not metadata.get("title") or metadata.get("title") == "Unknown Title":
-            log.debug("Metadata is incomplete, trying Crossref as fallback.")
-            crossref_meta = self.crossref_source.get_metadata(doi)
-            if crossref_meta:
-                if metadata:
-                    # Update existing metadata but don't overwrite good values
-                    existing_meta = metadata.copy()
-                    crossref_meta.update(existing_meta)
-                    metadata = crossref_meta
-                else:
-                    metadata = crossref_meta
-
         if metadata is None:
-            log.warning(f"Could not find metadata for {doi}. Using DOI as fallback.")
             metadata = {"doi": doi}
-        elif not metadata.get("title") or metadata.get("title") == "Unknown Title":
-            log.warning(f"Could not find title for {doi}. Filename will be based on DOI.")
 
         filename = self._generate_filename(metadata)
         filepath = self.output_dir / filename
 
+        authors = metadata.get("authors", [])
+        year = metadata.get("year", "n.d.")
+        author_str = format_authors_apa(authors)
+        citation = f"{author_str}, {year}" if author_str else year
+
         if filepath.exists() and filepath.stat().st_size > 5000:
-            log.info(f"Skipping (exists): {filename}")
             with self._stats_lock:
                 self.stats["skipped"] += 1
-            return {"doi": doi, "status": "skipped", "filename": str(filepath)}
-
-        if primary_pdf_url and self.unpaywall_source._fetch_and_save(
-            primary_pdf_url, filepath
-        ):
-            self._record_outcome(doi, "Unpaywall", filename)
             return {
                 "doi": doi,
-                "status": "success",
-                "source": "Unpaywall",
+                "status": "skipped",
                 "filename": str(filepath),
+                "citation": citation,
             }
 
-        for source in self.pipeline:
-            if source.download(doi, filepath, metadata):
-                self._record_outcome(doi, source.name, filename)
+        if primary_pdf_url and not cancel_event.is_set():
+            if self.unpaywall_source._fetch_and_save(primary_pdf_url, filepath):
+                self._record_outcome(doi, "Unpaywall", filename)
                 return {
                     "doi": doi,
                     "status": "success",
-                    "source": source.name,
+                    "source": "Unpaywall",
                     "filename": str(filepath),
+                    "citation": citation,
                 }
 
-        # Best effort: try the DOI resolver as a last resort
-        if sources.DoiResolverSource(self.session).download(doi, filepath, metadata):
-            self._record_outcome(doi, "DoiResolver", filename)
-            return {
-                "doi": doi,
-                "status": "success",
-                "source": "DoiResolver",
-                "filename": str(filepath),
-            }
+        for source in self.pipeline:
+            if cancel_event.is_set():
+                return {
+                    "doi": doi,
+                    "status": "error",
+                    "message": "Cancelled mid-pipeline",
+                }
+            try:
+                if source.download(doi, filepath, metadata):
+                    self._record_outcome(doi, source.name, filename)
+                    return {
+                        "doi": doi,
+                        "status": "success",
+                        "source": source.name,
+                        "filename": str(filepath),
+                        "citation": citation,
+                    }
+            except Exception as e:
+                log.warning(f"{source.name} failed: {e}")
 
-        log.error(f"Failed to find PDF for: {doi}")
+        if cancel_event.is_set():
+            return {"doi": doi, "status": "error", "message": "Cancelled before finish"}
+
         with self._stats_lock:
             self.stats["fail"] += 1
-        return {"doi": doi, "status": "failed"}
+        return {"doi": doi, "status": "failed", "message": "No valid source found"}
 
+    # -------------------------------------------------------------------------
+    def test_connections(self):
+        results = []
+
+        # --- MODIFIED: This dictionary comprehension now correctly ---
+        # --- de-duplicates all sources from both lists. ---
+        all_sources_dict = {s.name: s for s in self.metadata_sources + self.pipeline}
+        all_sources = list(all_sources_dict.values())
+
+        # --- REMOVED THE BUGGY LINE ---
+        # all_sources.append(self.unpaywall_source) # <-- This was the BUG
+
+        with ThreadPoolExecutor(max_workers=len(all_sources)) as executor:
+            future_map = {executor.submit(s.test_connection): s for s in all_sources}
+            for future in as_completed(future_map):
+                src = future_map[future]
+                try:
+                    status, msg = future.result()
+                    results.append({"name": src.name, "status": status, "message": msg})
+                except Exception as e:
+                    results.append(
+                        {"name": src.name, "status": False, "message": str(e)}
+                    )
+        return results

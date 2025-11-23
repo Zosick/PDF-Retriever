@@ -5,6 +5,9 @@ Defines the source for the Open Science Framework (OSF).
 import logging
 from typing import Dict, Any, Optional
 import requests
+
+# --- MODIFIED: Added quote_plus ---
+from urllib.parse import quote_plus
 from . import config
 from .sources import Source
 
@@ -25,7 +28,8 @@ class OSFSource(Source):
         Gets the metadata for a given DOI from the OSF API.
         """
         try:
-            search_url = f"{self.api_url}search/?q={doi}"
+            # --- MODIFIED: URL-encode the DOI in the query ---
+            search_url = f"{self.api_url}search/?q={quote_plus(doi)}"
             response = self._make_request(search_url)
             if not response:
                 return None

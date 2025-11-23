@@ -4,3 +4,4 @@ bibtexparser
 rispy
 beautifulsoup4
 cryptography
+customtkinter

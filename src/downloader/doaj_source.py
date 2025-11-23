@@ -5,6 +5,9 @@ Defines the source for the Directory of Open Access Journals (DOAJ).
 import logging
 from typing import Dict, Any, Optional
 import requests
+
+# --- MODIFIED: Added quote_plus ---
+from urllib.parse import quote_plus
 from . import config
 from .sources import Source
 
@@ -25,7 +28,8 @@ class DOAJSource(Source):
         Gets the metadata for a given DOI from the DOAJ API.
         """
         try:
-            search_url = f"{self.api_url}search/articles/doi:{doi}"
+            # --- MODIFIED: URL-encode the DOI ---
+            search_url = f"{self.api_url}search/articles/doi:{quote_plus(doi)}"
             response = self._make_request(search_url)
             if not response:
                 return None

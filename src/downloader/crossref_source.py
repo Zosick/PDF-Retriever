@@ -5,6 +5,9 @@ Defines the source for Crossref.
 import logging
 from typing import Dict, Any, Optional
 import requests
+
+# --- MODIFIED: Added quote_plus ---
+from urllib.parse import quote_plus
 from . import config
 from .sources import Source
 
@@ -25,7 +28,8 @@ class CrossrefSource(Source):
         Gets the metadata for a given DOI from the Crossref API.
         """
         try:
-            search_url = f"{self.api_url}works/{doi}"
+            # --- MODIFIED: URL-encode the DOI ---
+            search_url = f"{self.api_url}works/{quote_plus(doi)}"
             response = self._make_request(search_url)
             if not response:
                 return None
@@ -40,16 +44,25 @@ class CrossrefSource(Source):
             log.debug(f"[{self.name}] Message for {doi}: {message}")
 
             title = message.get("title", ["Unknown Title"])[0]
-            
+
             year = None
-            if "published-print" in message and "date-parts" in message["published-print"]:
+            if (
+                "published-print" in message
+                and "date-parts" in message["published-print"]
+            ):
                 year = message["published-print"]["date-parts"][0][0]
-            elif "published-online" in message and "date-parts" in message["published-online"]:
+            elif (
+                "published-online" in message
+                and "date-parts" in message["published-online"]
+            ):
                 year = message["published-online"]["date-parts"][0][0]
             elif "issued" in message and "date-parts" in message["issued"]:
                 year = message["issued"]["date-parts"][0][0]
 
-            authors = [f"{author.get('given', '')} {author.get('family', '')}" for author in message.get("author", [])]
+            authors = [
+                f"{author.get('given', '')} {author.get('family', '')}"
+                for author in message.get("author", [])
+            ]
 
             return {
                 "title": title,
