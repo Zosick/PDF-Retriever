@@ -1,6 +1,11 @@
 # Open-Access PDF Retrieval System
 
-![GitHub stars](https://img.shields.io/github/stars/Zosick/PDF-Retriever-project?style=flat-square) ![Release version](https://img.shields.io/github/v/release/Zosick/PDF-Retriever-project?style=flat-square) ![Downloads](https://img.shields.io/github/downloads/Zosick/PDF-Retriever-project/total?style=flat-square) ![License](https://img.shields.io/github/license/Zosick/PDF-Retriever-project?style=flat-square)
+![Last Commit](https://img.shields.io/github/last-commit/Zosick/PDF-Retriever?style=flat-square)
+![Forks](https://img.shields.io/github/forks/Zosick/PDF-Retriever?style=flat-square)
+![Issues](https://img.shields.io/github/issues/Zosick/PDF-Retriever?style=flat-square)
+![Contributors](https://img.shields.io/github/contributors/Zosick/PDF-Retriever?style=flat-square)
+![Stars](https://img.shields.io/github/stars/Zosick/PDF-Retriever?style=flat-square)
+![License](https://img.shields.io/github/license/Zosick/PDF-Retriever?style=flat-square)
 
 A professional command-line interface (CLI) tool designed to efficiently download open-access PDF articles using their Digital Object Identifiers (DOIs). The system features a robust, multi-source retrieval pipeline and supports a wide range of academic citation file formats.
 
@@ -39,8 +44,8 @@ To get started, clone the repository and install the required Python packages.
 1.  **Clone the repository:**
 
     ```bash
-    git clone [https://github.com/Zosick/PDF-Retriever-project.git](https://github.com/Zosick/PDF-Retriever-project.git)
-    cd PDF-Retriever-project
+    git clone https://github.com/Zosick/PDF-Retriever.git
+    cd PDF-Retriever
     ```
 
 2.  **Create a virtual environment (recommended):**

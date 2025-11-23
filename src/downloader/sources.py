@@ -1,24 +1,17 @@
-# downloader/sources.py
-"""
-Defines the abstract base class for a PDF source and its implementations.
-Each source is responsible for finding and downloading a PDF for a given DOI.
-"""
+# src/downloader/sources.py
 import logging
-import re
+import threading
 import time
-import json
-import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Any, Tuple, List, Optional
-from urllib.parse import quote_plus, urljoin
+from typing import Any
+from urllib.parse import urljoin
+
 import requests
-from . import config
-from .exceptions import UnrecoverableError
+
 from .utils import find_pdf_link_on_page
 
 log = logging.getLogger(__name__)
-
 
 class Source(ABC):
     """Abstract base class for a PDF source."""
@@ -26,20 +19,21 @@ class Source(ABC):
     def __init__(self, session: requests.Session):
         self.session = session
         self.name = self.__class__.__name__.replace("Source", "")
-        self._last_request_time = 0
-        self._min_request_interval = 0.1
+        self._last_request_time = 0.0
+        self._min_request_interval = 2.0
+        self._lock = threading.Lock()
 
     @abstractmethod
-    def download(self, doi: str, filepath: Path, metadata: Dict[str, Any]) -> bool:
-        """Attempt to download a PDF for the given DOI. Returns True on success."""
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         pass
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
-        """(Optional) Fetches metadata for a DOI. Not all sources implement this."""
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
+        """
+        Retrieves metadata for a DOI. Subclasses can override with caching.
+        """
         return None
 
-    def test_connection(self) -> Tuple[bool, str]:
-        """Runs a simple test to check if the source is configured and reachable."""
+    def test_connection(self) -> tuple[bool, str]:
         base_url = getattr(self, "api_url", None)
         if base_url:
             try:
@@ -52,18 +46,14 @@ class Source(ABC):
                 return (False, "API may be unreachable")
         return (True, "No test implemented")
 
-    def _rate_limit(self):
-        """Basic rate limiting to be respectful to APIs"""
-        elapsed = time.time() - self._last_request_time
-        if elapsed < self._min_request_interval:
-            time.sleep(self._min_request_interval - elapsed)
-        self._last_request_time = time.time()
+    def _rate_limit(self) -> None:
+        with self._lock:
+            elapsed = time.time() - self._last_request_time
+            if elapsed < self._min_request_interval:
+                time.sleep(self._min_request_interval - elapsed)
+            self._last_request_time = time.time()
 
     def _save_stream(self, resp: requests.Response, filepath: Path) -> bool:
-        """
-        Saves a response stream to a file with size and content validation.
-        Writes to a temporary '.part' file first to prevent corruption.
-        """
         tmp_path = filepath.with_suffix(".part")
         content_length = resp.headers.get("Content-Length")
         content_type = resp.headers.get("Content-Type", "").lower()
@@ -78,48 +68,33 @@ class Source(ABC):
                     fh.write(chunk)
 
             file_size = tmp_path.stat().st_size
-
             if file_size < 5000:
-                log.warning(
-                    f"[{self.name}] File too small ({file_size} bytes), likely an error page."
-                )
+                log.warning(f"[{self.name}] File too small ({file_size} bytes).")
                 return False
-
+            
             if content_length and abs(file_size - int(content_length)) > 1000:
-                log.warning(
-                    f"[{self.name}] File size mismatch: expected {content_length}, got {file_size}"
-                )
+                log.warning(f"[{self.name}] File size mismatch.")
 
             with tmp_path.open("rb") as fh:
                 header = fh.read(1024)
                 if not header.startswith(b"%PDF-"):
-                    header_lower = header.lower()
-                    if (
-                        b"html" in header_lower
-                        or b"error" in header_lower
-                        or b"not found" in header_lower
-                        or b"<!doctype" in header_lower
-                    ):
-                        log.warning(
-                            f"[{self.name}] File appears to be an error page, not a PDF"
-                        )
-                        return False
-                    log.warning(f"[{self.name}] File does not have PDF signature")
+                    log.warning(f"[{self.name}] Invalid PDF header.")
+                    return False
+                fh.seek(-1024, 2)
+                if b"%%EOF" not in fh.read(1024):
+                    log.warning(f"[{self.name}] Incomplete PDF (missing EOF).")
                     return False
 
             tmp_path.rename(filepath)
-            log.info(f"[{self.name}] Successfully saved PDF ({file_size} bytes)")
+            log.info(f"[{self.name}] Saved PDF: {filepath.name}")
             return True
-
-        except Exception as exc:
-            log.error(
-                f"[{self.name}] Save failed for {filepath.name}: {exc}", exc_info=True
-            )
+        except Exception as e:
+            log.error(f"[{self.name}] Save error: {e}")
             return False
         finally:
-            if tmp_path.exists():
-                tmp_path.unlink(missing_ok=True)
+            if tmp_path.exists(): tmp_path.unlink()
 
+<<<<<<< HEAD
     def _fetch_and_save(
         self, url: str, filepath: Path, headers: Optional[Dict[str, str]] = None
     ) -> bool:
@@ -582,10 +557,42 @@ class DoiResolverSource(Source):
             response = self._make_request(url, headers=headers, timeout=20, stream=True)
 
             if not response:
+=======
+    def _fetch_and_save(self, url: str, filepath: Path, headers: dict[str, str] | None = None, max_retries: int = 3) -> bool:
+        for attempt in range(max_retries):
+            try:
+                self._rate_limit()
+                req_headers = dict(self.session.headers)
+                req_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
+                if headers: req_headers.update(headers)
+                
+                with self.session.get(url, timeout=90, stream=True, headers=req_headers) as r:
+                    r.raise_for_status()
+                    if "application/pdf" in r.headers.get("Content-Type", "").lower():
+                        return self._save_stream(r, filepath)
+                    
+                    log.debug(f"[{self.name}] scraping fallback for {url}")
+                    pdf_url = find_pdf_link_on_page(url, self.session)
+                    if pdf_url:
+                        with self.session.get(pdf_url, stream=True, timeout=90) as r2:
+                            r2.raise_for_status()
+                            return self._save_stream(r2, filepath)
+>>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8
                 return False
-
-            return self._save_stream(response, filepath)
-
-        except requests.RequestException:
-            pass
+            except Exception as e:
+                if attempt == max_retries - 1: log.warning(f"[{self.name}] Fetch failed: {e}")
+                time.sleep((attempt + 1) * 2)
         return False
+<<<<<<< HEAD
+=======
+
+    def _make_request(self, url: str, method: str = "GET", **kwargs) -> requests.Response | None:
+        try:
+            self._rate_limit()
+            r = self.session.request(method, url, **kwargs)
+            r.raise_for_status()
+            return r
+        except Exception as e:
+            log.debug(f"[{self.name}] Request failed: {e}")
+            return None
+>>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8

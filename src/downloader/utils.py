@@ -2,6 +2,9 @@
 """Utility functions for the downloader."""
 
 import re
+
+import requests
+
 from .config import MAX_FILENAME_LEN
 
 
@@ -31,7 +34,9 @@ def clean_doi(doi: str) -> str | None:
     return None
 
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
+
 
 def find_pdf_link_on_page(url: str, session: requests.Session) -> str | None:
     """

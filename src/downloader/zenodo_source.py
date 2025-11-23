@@ -3,7 +3,9 @@
 Defines the source for Zenodo.
 """
 import logging
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any
+
 import requests
 
 # --- MODIFIED: Added quote_plus ---
@@ -23,7 +25,7 @@ class ZenodoSource(Source):
         super().__init__(session)
         self.api_url = config.ZENODO_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
         Gets the metadata for a given DOI from the Zenodo API.
         """
@@ -67,7 +69,7 @@ class ZenodoSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: str, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
         Downloads the PDF for a given DOI from Zenodo.
         """

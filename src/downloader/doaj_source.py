@@ -3,11 +3,16 @@
 Defines the source for the Directory of Open Access Journals (DOAJ).
 """
 import logging
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Any
+
 import requests
 
+<<<<<<< HEAD
 # --- MODIFIED: Added quote_plus ---
 from urllib.parse import quote_plus
+=======
+>>>>>>> 85cb3d387c185462bcf3032d3f6a75495df95de8
 from . import config
 from .sources import Source
 
@@ -23,7 +28,7 @@ class DOAJSource(Source):
         super().__init__(session)
         self.api_url = config.DOAJ_API_URL
 
-    def get_metadata(self, doi: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
         Gets the metadata for a given DOI from the DOAJ API.
         """
@@ -67,7 +72,7 @@ class DOAJSource(Source):
             log.warning(f"[{self.name}] Metadata request failed for {doi}: {e}")
             return None
 
-    def download(self, doi: str, filepath: str, metadata: Dict[str, Any]) -> bool:
+    def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
         Downloads the PDF for a given DOI from the DOAJ.
         """
