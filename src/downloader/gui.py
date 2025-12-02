@@ -12,12 +12,11 @@ from tkinter import filedialog, messagebox
 
 import customtkinter
 
+from . import parsers, settings_manager
+from .core import Downloader
 from .download_manager import DownloadManager
 from .protocol import ProgressQueue
-from . import settings_manager
-from . import parsers
 from .utils import clean_doi
-from .core import Downloader
 
 
 def get_asset_path(file_name: str) -> Path:

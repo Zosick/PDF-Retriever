@@ -14,14 +14,14 @@ try:
 except ImportError:
     msvcrt = None
 
-from rich.console import Console, Group
-from rich.prompt import Prompt
-from rich.panel import Panel
-from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
-from rich.rule import Rule
 from rich.align import Align
-from rich.table import Table
+from rich.console import Console, Group
 from rich.live import Live
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.prompt import Prompt
+from rich.rule import Rule
+from rich.table import Table
 from rich.text import Text
 
 from .core import Downloader

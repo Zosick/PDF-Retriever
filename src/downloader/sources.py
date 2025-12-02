@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 import requests
+
 from .utils import find_pdf_link_on_page
 
 log = logging.getLogger(__name__)
