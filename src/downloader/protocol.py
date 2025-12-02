@@ -6,7 +6,7 @@ must conform to these type definitions.
 """
 
 import queue
-from typing import Literal, TypedDict, Union
+from typing import Literal, TypedDict
 
 # --- Define the individual message structures ---
 
@@ -31,7 +31,7 @@ class DownloadFailedMsg(TypedDict):
 
 
 # A "Progress Message" is one of the three above
-ProgressMessage = Union[DownloadSuccessMsg, DownloadSkippedMsg, DownloadFailedMsg]
+ProgressMessage = DownloadSuccessMsg | DownloadSkippedMsg | DownloadFailedMsg
 
 
 class StatusStartMsg(TypedDict):
@@ -59,16 +59,16 @@ class StatusFinishedMsg(TypedDict):
 
 
 # A "Status Message" is one of the administrative messages
-StatusMessage = Union[
-    StatusStartMsg,
-    StatusCompleteMsg,
-    StatusCancelledMsg,
-    StatusCriticalErrorMsg,
-    StatusFinishedMsg,
-]
+StatusMessage = (
+    StatusStartMsg
+    | StatusCompleteMsg
+    | StatusCancelledMsg
+    | StatusCriticalErrorMsg
+    | StatusFinishedMsg
+)
 
 # The queue can contain *any* of these messages
-QueueMessage = Union[ProgressMessage, StatusMessage]
+QueueMessage = ProgressMessage | StatusMessage
 
 # This is the type for the queue itself
 ProgressQueue = queue.Queue[QueueMessage]

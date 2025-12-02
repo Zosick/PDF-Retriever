@@ -5,11 +5,10 @@ Defines the source for Zenodo.
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 import requests
 
-# --- MODIFIED: Added quote_plus ---
-from urllib.parse import quote_plus
 from . import config
 from .sources import Source
 

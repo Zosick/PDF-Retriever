@@ -8,9 +8,18 @@ from rich.logging import RichHandler
 
 from . import settings_manager
 from .tui import (
-    show_main_panel, get_dois, run_download, run_status_test, err, done, console,
-    load_config, save_config, clear_config, get_settings, should_show_debug,
-    show_failed_dois
+    clear_config,
+    console,
+    err,
+    get_dois,
+    get_settings,
+    load_config,
+    run_download,
+    run_status_test,
+    save_config,
+    should_show_debug,
+    show_failed_dois,
+    show_main_panel,
 )
 
 def main():

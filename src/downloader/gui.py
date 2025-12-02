@@ -2,15 +2,15 @@
 GUI for the PDF Retriever application using customtkinter.
 """
 
-import customtkinter
-import tkinter
-from tkinter import filedialog, messagebox
 import os
-import sys
-from pathlib import Path
-import re
-import threading
 import queue
+import re
+import sys
+import threading
+from pathlib import Path
+from tkinter import filedialog, messagebox
+
+import customtkinter
 
 from .download_manager import DownloadManager
 from .protocol import ProgressQueue
@@ -644,11 +644,11 @@ class App(customtkinter.CTk):
             self.right_frame.log_textbox.insert("end", f"{citation}\n")
         elif status == "skipped":
             self.right_frame.log_textbox.insert(
-                "end", f"Skipped (Exists): ", "light_blue"
+                "end", "Skipped (Exists): ", "light_blue"
             )
             self.right_frame.log_textbox.insert("end", f"{citation}\n")
         else:
-            self.right_frame.log_textbox.insert("end", f"Failed: ", "red")
+            self.right_frame.log_textbox.insert("end", "Failed: ", "red")
             self.right_frame.log_textbox.insert("end", f"{citation}\n", "red")
 
         self.right_frame.log_textbox.configure(state="disabled")
@@ -722,7 +722,7 @@ class App(customtkinter.CTk):
             return
 
         try:
-            with open(fp, "r", encoding="utf-8") as f:
+            with open(fp, encoding="utf-8") as f:
                 failed_dois_set = {line.strip() for line in f if line.strip()}
 
             failed_dois = sorted(list(failed_dois_set))

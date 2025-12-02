@@ -5,15 +5,16 @@ Handles concurrent downloads, queue updates, and safe cancellation.
 Decoupled from the GUI layer.
 """
 
-import threading
 import queue
-from pathlib import Path  # <-- Make sure Path is imported
+import threading
 from concurrent.futures import (
-    ThreadPoolExecutor,
-    as_completed,
     CancelledError,
+    ThreadPoolExecutor,
     TimeoutError,
+    as_completed,
 )
+from pathlib import Path  # <-- Make sure Path is imported
+
 from .core import Downloader
 
 
@@ -67,7 +68,6 @@ class DownloadManager(threading.Thread):
         """Runs the entire download process in this worker thread."""
         self._cancel_event.clear()
         success, skipped, failed = 0, 0, 0
-        total = len(self.dois)
 
         try:
             self.progress_queue.put(

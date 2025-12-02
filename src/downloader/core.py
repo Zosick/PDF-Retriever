@@ -4,7 +4,7 @@ import random
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -165,7 +165,7 @@ class Downloader:
         
         return metadata, primary_pdf_url
 
-    def download_one(self, doi: str, cancel_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+    def download_one(self, doi: str, cancel_event: threading.Event | None = None) -> dict[str, Any]:
         """Runs full download pipeline for one DOI with cancel support."""
         if cancel_event and cancel_event.is_set():
             return {"doi": doi, "status": "error", "message": "Cancelled before start"}

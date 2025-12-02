@@ -4,6 +4,7 @@ Low-level settings management for the downloader.
 
 import json
 from pathlib import Path
+
 from cryptography.fernet import Fernet
 
 CONFIG_DIR = Path.home() / ".pdf_retriever"

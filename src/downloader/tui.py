@@ -2,13 +2,12 @@
 Open-Access PDF Retrieval System — TUI Elements
 """
 
-import os
+import logging
 import re
 import sys
-import logging
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 try:
     import msvcrt
@@ -49,7 +48,8 @@ def get_single_key():
         except Exception:
             return ""
     else:
-        import termios, tty
+        import termios
+        import tty
 
         fd = sys.stdin.fileno()
         old = termios.tcgetattr(fd)
@@ -94,7 +94,7 @@ def load_config():
     cfg = settings_manager.read_config_raw()
     if cfg is None:
         console.print(
-            f"[yellow]Warning: Could not parse settings. Resetting.[/yellow]"
+            "[yellow]Warning: Could not parse settings. Resetting.[/yellow]"
         )
     return cfg
 
