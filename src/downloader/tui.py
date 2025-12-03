@@ -5,7 +5,6 @@ Open-Access PDF Retrieval System — TUI Elements
 import logging
 import re
 import sys
-from typing import Any
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path

@@ -14,8 +14,8 @@ from concurrent.futures import (
     TimeoutError,
     as_completed,
 )
-from typing import Any
 from pathlib import Path  # <-- Make sure Path is imported
+from typing import Any
 
 from .core import Downloader
 
