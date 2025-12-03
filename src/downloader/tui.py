@@ -5,6 +5,7 @@ Open-Access PDF Retrieval System — TUI Elements
 import logging
 import re
 import sys
+from typing import Any
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -12,7 +13,7 @@ from pathlib import Path
 try:
     import msvcrt
 except ImportError:
-    msvcrt = None
+    msvcrt = None  # type: ignore
 
 from rich.align import Align
 from rich.console import Console, Group

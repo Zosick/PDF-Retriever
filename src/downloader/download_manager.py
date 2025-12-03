@@ -9,10 +9,12 @@ import queue
 import threading
 from concurrent.futures import (
     CancelledError,
+    Future,
     ThreadPoolExecutor,
     TimeoutError,
     as_completed,
 )
+from typing import Any
 from pathlib import Path  # <-- Make sure Path is imported
 
 from .core import Downloader
@@ -49,7 +51,7 @@ class DownloadManager(threading.Thread):
             verify_ssl=settings["verify_ssl"],
         )
         self.executor = None
-        self.future_map = {}
+        self.future_map: dict[Future[Any], str] = {}
         self._cancel_event = threading.Event()
 
     # --- NEW: Helper to safely write to the fail log ---

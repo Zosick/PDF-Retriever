@@ -98,7 +98,7 @@ class Source(ABC):
             try:
                 self._rate_limit()
                 
-                req_headers = self.session.headers.copy()
+                req_headers = dict(self.session.headers)
                 req_headers.update({"Accept": "application/pdf,text/html;q=0.9,*/*;q=0.8"})
                 if headers:
                     req_headers.update(headers)
@@ -132,7 +132,7 @@ class Source(ABC):
         try:
             self._rate_limit()
             if "headers" in kwargs:
-                merged_headers = self.session.headers.copy()
+                merged_headers = dict(self.session.headers)
                 merged_headers.update(kwargs["headers"])
                 kwargs["headers"] = merged_headers
             
