@@ -1,14 +1,13 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import tkinter
-
 # Mock customtkinter before importing the GUI
 import sys
+import unittest
+from unittest.mock import MagicMock, patch
 
 # Mock the customtkinter library
 sys.modules['customtkinter'] = MagicMock()
 
 from src.downloader import gui
+
 
 @unittest.skip("GUI tests require a display")
 class TestGUI(unittest.TestCase):

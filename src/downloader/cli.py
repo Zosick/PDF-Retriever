@@ -22,6 +22,7 @@ from .tui import (
     show_main_panel,
 )
 
+
 def main():
     settings = load_config() or None
 

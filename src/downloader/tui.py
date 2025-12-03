@@ -24,10 +24,10 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
+from . import settings_manager
 from .core import Downloader
 from .parsers import extract_dois_from_file
 from .utils import clean_doi
-from . import settings_manager
 
 console = Console()
 

@@ -1,6 +1,5 @@
 import argparse
 import getpass
-import glob
 import hashlib
 import os
 import shutil
@@ -59,7 +58,7 @@ def run_build():
     pyinstaller_args = []
 
     if VERSION_FILE.exists():
-        console.print(f"   [green]✓ Found version information[/green]")
+        console.print("   [green]✓ Found version information[/green]")
         pyinstaller_args.append(f"--version-file={VERSION_FILE}")
     else:
         console.print(
@@ -67,7 +66,7 @@ def run_build():
         )
 
     if ICON_FILE.exists():
-        console.print(f"   [green]✓ Found icon file[/green]")
+        console.print("   [green]✓ Found icon file[/green]")
         pyinstaller_args.append(f"--icon={ICON_FILE}")
     else:
         console.print(

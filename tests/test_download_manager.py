@@ -6,15 +6,14 @@ Run this file using 'python -m pytest' in your terminal.
 import queue
 import threading
 import time
-from pathlib import Path
-from unittest.mock import Mock, call
 from concurrent.futures import CancelledError
+from pathlib import Path
+from unittest.mock import call
 
 import pytest
 
 # This import will work thanks to pytest.ini
 from downloader.download_manager import DownloadManager
-from downloader.protocol import ProgressQueue
 
 
 @pytest.fixture
