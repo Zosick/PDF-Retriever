@@ -1,9 +1,9 @@
 import logging
 import re
 from typing import Any
+from xml.etree.ElementTree import Element
 
 import defusedxml.ElementTree as ET
-from xml.etree.ElementTree import Element
 import requests
 
 from src.downloader import config
