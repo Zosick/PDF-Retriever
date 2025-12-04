@@ -1,7 +1,10 @@
 # src/downloader/types.py
 """Type definitions for the PDF downloader."""
 
-from typing import TypedDict
+import threading
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, TypedDict
 
 
 class Metadata(TypedDict, total=False):
@@ -20,3 +23,13 @@ class DownloadResult(TypedDict):
     status: str
     source: str | None
     filename: str | None
+
+
+@dataclass
+class DownloadContext:
+    doi: str
+    filepath: Path
+    filename: str
+    citation: str
+    metadata: dict[str, Any]
+    cancel_event: threading.Event | None = None

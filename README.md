@@ -45,14 +45,14 @@ A modern graphical user interface (GUI) application designed to efficiently down
 
 To get started, clone the repository and install the required Python packages.
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
 
     ```bash
     git clone https://github.com/Zosick/PDF-Retriever.git
     cd PDF-Retriever
     ```
 
-2.  **Create a virtual environment (recommended):**
+2. **Create a virtual environment (recommended):**
 
     ```bash
     python -m venv venv
@@ -63,14 +63,14 @@ To get started, clone the repository and install the required Python packages.
     - On Windows: `.\venv\Scripts\activate`
     - On macOS/Linux: `source venv/bin/activate`
 
-3.  **Install dependencies:**
+3. **Install dependencies:**
     A `requirements.txt` file is included.
 
     ```bash
     pip install -r requirements.txt
     ```
 
-    _(The file includes: `rich`, `requests`, `bibtexparser`, `rispy`, `beautifulsoup4`)_
+    _(The file includes: `rich`, `requests`, `bibtexparser`, `rispy`, `beautifulsoup4`, `defusedxml`)_
 
 ---
 
@@ -88,7 +88,7 @@ Or use the standalone executable (after building):
 .\dist\"PDF Retriever.exe"
 ```
 
-### GUI Features:
+### GUI Features
 
 - **Settings Panel:** Configure output directory, Unpaywall email (Required), CORE API key, SSL settings, and parallel download count.
 - **DOI Input:** Load DOIs from citation files (.bib, .ris, .json, etc.) or paste them directly.
@@ -103,13 +103,13 @@ Or use the standalone executable (after building):
 
 You can compile the entire project into a single `.exe` file using the included build script.
 
-1.  **Install PyInstaller:**
+1. **Install PyInstaller:**
 
     ```bash
     pip install pyinstaller
     ```
 
-2.  **Run the build script:**
+2. **Run the build script:**
 
     ```bash
     python build_exe.py
@@ -164,7 +164,7 @@ This project gratefully acknowledges the following open data services:
 
 This project has been refactored for clarity and maintainability.
 
-```
+```text
 PDF-Retriever-project/
 │
 ├── src/
@@ -181,21 +181,24 @@ PDF-Retriever-project/
 │       ├── protocol.py         # Protocol definitions
 │       ├── settings.py         # Settings models
 │       ├── settings_manager.py # Settings persistence
-│       ├── sources.py          # Abstract Base Source class
+│       ├── source_manager.py   # Manages source prioritization
+│       ├── sources/            # Metadata and download sources
+│       │   ├── __init__.py
+│       │   ├── base.py         # Abstract Base Source class
+│       │   ├── arxiv_source.py
+│       │   ├── core_api_source.py
+│       │   ├── crossref_source.py
+│       │   ├── doaj_source.py
+│       │   ├── doi_resolver_source.py
+│       │   ├── openalex_source.py
+│       │   ├── osf_source.py
+│       │   ├── pmc_source.py
+│       │   ├── semantic_scholar_source.py
+│       │   ├── unpaywall_source.py
+│       │   └── zenodo_source.py
 │       ├── tui.py              # Terminal UI components
 │       ├── types.py            # Type definitions
 │       ├── utils.py            # Filename sanitizers and author formatters
-│       ├── arxiv_source.py     # Arxiv source
-│       ├── core_api_source.py  # CORE API source
-│       ├── crossref_source.py  # Crossref source
-│       ├── doaj_source.py      # DOAJ source
-│       ├── doi_resolver_source.py # Direct DOI resolution
-│       ├── openalex_source.py  # OpenAlex source
-│       ├── osf_source.py       # OSF source
-│       ├── pmc_source.py       # PubMed Central source
-│       ├── semantic_scholar_source.py # Semantic Scholar source
-│       ├── unpaywall_source.py # Unpaywall source
-│       └── zenodo_source.py    # Zenodo source
 │
 ├── assets/
 │   └── favicon.ico

@@ -14,17 +14,15 @@ from concurrent.futures import (
     TimeoutError,
     as_completed,
 )
-from pathlib import Path  # <-- Make sure Path is imported
+from pathlib import Path
 from typing import Any
 
 from .core import Downloader
 
 
-# --- MODIFIED: Inherit from threading.Thread ---
 class DownloadManager(threading.Thread):
     """Manages the concurrent download process."""
 
-    # --- MODIFIED: Accept 'dois' and 'failed_dois_path' ---
     def __init__(
         self,
         settings: dict,
@@ -32,17 +30,14 @@ class DownloadManager(threading.Thread):
         dois: list[str],
         failed_dois_path: Path,
     ):
-        # --- MODIFIED: Call super().__init__ ---
         super().__init__(daemon=True)
 
         self.settings = settings
         self.progress_queue = progress_queue
         self.dois = dois
 
-        # --- NEW: Store path and create a lock for fail file ---
         self.failed_dois_path = failed_dois_path
         self.fail_lock = threading.Lock()
-        # --- END NEW ---
 
         self.downloader = Downloader(
             output_dir=settings["output_dir"],
@@ -54,7 +49,6 @@ class DownloadManager(threading.Thread):
         self.future_map: dict[Future[Any], str] = {}
         self._cancel_event = threading.Event()
 
-    # --- NEW: Helper to safely write to the fail log ---
     def _log_failure(self, doi: str):
         """Thread-safely appends a failed DOI to the designated file."""
         try:
@@ -65,99 +59,106 @@ class DownloadManager(threading.Thread):
             # Log to console if writing to file fails
             print(f"CRITICAL: Failed to write to fail_log: {e}")
 
-    # --- MODIFIED: Renamed 'start_download' to 'run' ---
+    def _submit_tasks(self) -> dict[Future[Any], str]:
+        self.executor = ThreadPoolExecutor(max_workers=self.settings["max_workers"])
+        return {
+            self.executor.submit(
+                self.downloader.download_one, doi, self._cancel_event
+            ): doi
+            for doi in self.dois
+        }
+
+    def _process_completed_future(self, future: Future[Any], doi: str) -> tuple[int, int, int]:
+        success, skipped, failed = 0, 0, 0
+        try:
+            result = future.result()
+            status = result.get("status", "failed")
+
+            if status == "success":
+                success = 1
+            elif status == "skipped":
+                skipped = 1
+            else:
+                failed = 1
+                self._log_failure(result.get("doi", doi))
+
+            self.progress_queue.put(result)
+
+        except CancelledError:
+            failed = 1
+            self._log_failure(doi)
+            self.progress_queue.put(
+                {"status": "error", "doi": doi, "message": "Task was cancelled"}
+            )
+        except Exception as e:
+            failed = 1
+            self._log_failure(doi)
+            self.progress_queue.put(
+                {"status": "error", "doi": doi, "message": f"Error: {e}"}
+            )
+        return success, skipped, failed
+
+    def _handle_cancellation(self, pending_futures: set[Future[Any]], success: int, skipped: int, failed: int):
+        failed += len(pending_futures)
+        for remaining_future in pending_futures:
+            self._log_failure(self.future_map.get(remaining_future, "Unknown DOI"))
+
+        summary_msg = f"Success: {success}\nSkipped: {skipped}\nFailed: {failed}"
+        self.progress_queue.put({"status": "cancelled", "message": summary_msg})
+
+    def _handle_completion(self, success: int, skipped: int, failed: int):
+        summary_msg = f"Success: {success}\nSkipped: {skipped}\nFailed: {failed}"
+        self.progress_queue.put({"status": "complete", "message": summary_msg})
+
+    def _process_batch(self, pending_futures: set[Future[Any]]) -> tuple[int, int, int]:
+        success, skipped, failed = 0, 0, 0
+        try:
+            for future in as_completed(pending_futures, timeout=0.5):
+                pending_futures.remove(future)
+                doi = self.future_map.get(future, "Unknown DOI")
+                s, sk, f = self._process_completed_future(future, doi)
+                success += s
+                skipped += sk
+                failed += f
+
+                if self._cancel_event.is_set():
+                    break
+        except TimeoutError:
+            pass
+        return success, skipped, failed
+
+    def _process_futures_loop(self, pending_futures: set[Future[Any]]) -> tuple[int, int, int]:
+        success, skipped, failed = 0, 0, 0
+        while pending_futures:
+            if self._cancel_event.is_set():
+                break
+
+            s, sk, f = self._process_batch(pending_futures)
+            success += s
+            skipped += sk
+            failed += f
+            
+        return success, skipped, failed
+
     def run(self):
         """Runs the entire download process in this worker thread."""
         self._cancel_event.clear()
-        success, skipped, failed = 0, 0, 0
-
+        
         try:
             self.progress_queue.put(
                 {"status": "start", "message": "--- Starting Download ---"}
             )
-            self.executor = ThreadPoolExecutor(max_workers=self.settings["max_workers"])
-
-            self.future_map = {
-                self.executor.submit(
-                    self.downloader.download_one, doi, self._cancel_event
-                ): doi
-                for doi in self.dois
-            }
+            self.future_map = self._submit_tasks()
             pending_futures = set(self.future_map.keys())
 
-            while pending_futures:
-                if self._cancel_event.is_set():
-                    break
-
-                try:
-                    for future in as_completed(pending_futures, timeout=0.5):
-                        pending_futures.remove(future)
-                        doi = self.future_map.get(
-                            future, "Unknown DOI"
-                        )  # Get DOI early
-                        try:
-                            result = future.result()
-                            status = result.get("status", "failed")
-
-                            if status == "success":
-                                success += 1
-                            elif status == "skipped":
-                                skipped += 1
-                            else:
-                                failed += 1
-                                # --- NEW: Log failure ---
-                                self._log_failure(result.get("doi", doi))
-
-                            self.progress_queue.put(result)
-
-                        except CancelledError:
-                            failed += 1
-                            # --- NEW: Log failure ---
-                            self._log_failure(doi)
-                            self.progress_queue.put(
-                                {
-                                    "status": "error",
-                                    "doi": doi,
-                                    "message": "Task was cancelled",
-                                }
-                            )
-                        except Exception as e:
-                            failed += 1
-                            # --- NEW: Log failure ---
-                            self._log_failure(doi)
-                            self.progress_queue.put(
-                                {
-                                    "status": "error",
-                                    "doi": doi,
-                                    "message": f"Error: {e}",
-                                }
-                            )
-
-                        if self._cancel_event.is_set():
-                            break
-
-                except TimeoutError:
-                    pass
-
-            summary_msg = f"Success: {success}\nSkipped: {skipped}\nFailed: {failed}"
+            success, skipped, failed = self._process_futures_loop(pending_futures)
 
             if self._cancel_event.is_set():
-                failed += len(pending_futures)
-                # --- NEW: Log all remaining futures as failed ---
-                for remaining_future in pending_futures:
-                    self._log_failure(
-                        self.future_map.get(remaining_future, "Unknown DOI")
-                    )
-
-                summary_msg = (
-                    f"Success: {success}\nSkipped: {skipped}\nFailed: {failed}"
-                )
-                self.progress_queue.put({"status": "cancelled", "message": summary_msg})
+                self._handle_cancellation(pending_futures, success, skipped, failed)
             else:
-                self.progress_queue.put({"status": "complete", "message": summary_msg})
+                self._handle_completion(success, skipped, failed)
 
         except Exception as e:
-            # --- NEW: Log all DOIs as failed on critical error ---
             for doi in self.dois:
                 self._log_failure(doi)
             self.progress_queue.put(
@@ -166,7 +167,6 @@ class DownloadManager(threading.Thread):
 
         finally:
             if self.executor:
-                # --- MODIFIED: Wait for all threads to shut down ---
                 self.executor.shutdown(wait=True, cancel_futures=True)
             self.executor = None
             self.future_map = {}

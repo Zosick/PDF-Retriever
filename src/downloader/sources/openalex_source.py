@@ -4,8 +4,8 @@ from urllib.parse import quote_plus
 
 import requests
 
-from . import config
-from .sources import Source
+from src.downloader import config
+from .base import Source
 
 log = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
-# downloader/osf_source.py
+# downloader/zenodo_source.py
 """
-Defines the source for the Open Science Framework (OSF).
+Defines the source for Zenodo.
 """
 import logging
 from pathlib import Path
@@ -9,51 +9,53 @@ from urllib.parse import quote_plus
 
 import requests
 
-from . import config
-from .sources import Source
+from src.downloader import config
+from .base import Source
 
 log = logging.getLogger(__name__)
 
 
-class OSFSource(Source):
+class ZenodoSource(Source):
     """
-    A source for finding open access articles from the OSF.
+    A source for finding open access articles from Zenodo.
     """
 
     def __init__(self, session: requests.Session):
         super().__init__(session)
-        self.api_url = config.OSF_API_URL
+        self.api_url = config.ZENODO_API_URL
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
-        Gets the metadata for a given DOI from the OSF API.
+        Gets the metadata for a given DOI from the Zenodo API.
         """
         try:
             # --- MODIFIED: URL-encode the DOI in the query ---
-            search_url = f"{self.api_url}search/?q={quote_plus(doi)}"
+            search_url = f'{self.api_url}records?q=doi:"{quote_plus(doi)}"'
             response = self._make_request(search_url)
             if not response:
                 return None
 
             data = response.json()
-            if data.get("meta", {}).get("total", 0) == 0:
+            if data.get("hits", {}).get("total", 0) == 0:
                 log.debug(f"[{self.name}] No results found for DOI: {doi}")
                 return None
 
             # The first result is the most likely match
-            result = data.get("data", [])[0]
-            attributes = result.get("attributes", {})
+            result = data.get("hits", {}).get("hits", [])[0]
+            metadata = result.get("metadata", {})
 
-            title = attributes.get("title", "Unknown Title")
-            year = attributes.get("date_published", "Unknown").split("-")[0]
+            title = metadata.get("title", "Unknown Title")
+            pub_date = metadata.get("publication_date", "Unknown")
+            year = pub_date.split("-")[0] if pub_date and "-" in pub_date else "Unknown"
 
             # Find the PDF URL
             pdf_url = None
-            links = result.get("links", {})
-            if "download" in links:
-                pdf_url = links.get("download")
+            for f in result.get("files", []):
+                if f.get("mimetype") == "application/pdf":
+                    pdf_url = f.get("links", {}).get("self")
+                    break
 
-            authors = attributes.get("creators", [])
+            authors = [creator.get("name") for creator in metadata.get("creators", [])]
 
             return {
                 "title": title,
@@ -69,7 +71,7 @@ class OSFSource(Source):
 
     def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
-        Downloads the PDF for a given DOI from the OSF.
+        Downloads the PDF for a given DOI from Zenodo.
         """
         pdf_url = metadata.get("_pdf_url")
         if not pdf_url:

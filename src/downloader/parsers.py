@@ -5,6 +5,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any, Callable
 
 import bibtexparser
 import rispy
@@ -14,29 +15,30 @@ from .utils import clean_doi
 DOI_REGEX = r"\b(10[.]\d{4,9}/[-._;()/:A-Z0-9]+)\b"
 
 
-def _parse_bibtex(text: str) -> list[str]:
-    """Extracts DOIs from a BibTeX string."""
+def _parse_generic(text: str, loader: Callable[[str], Any], key: str = "doi") -> list[str]:
+    """Generic parser for structured formats."""
     dois = set()
     try:
-        db = bibtexparser.loads(text)
-        for entry in db.entries:
-            if "doi" in entry and (cleaned := clean_doi(entry["doi"])):
+        data = loader(text)
+        # Handle both list of dicts (RIS, JSON) and object with entries (BibTeX)
+        items = data.entries if hasattr(data, "entries") else data
+        for item in items:
+            val = item.get(key)
+            if val and (cleaned := clean_doi(val)):
                 dois.add(cleaned)
     except Exception:
         pass
     return list(dois)
+
+
+def _parse_bibtex(text: str) -> list[str]:
+    """Extracts DOIs from a BibTeX string."""
+    return _parse_generic(text, bibtexparser.loads, "doi")
 
 
 def _parse_ris(text: str) -> list[str]:
     """Extracts DOIs from an RIS string using the rispy library."""
-    dois = set()
-    try:
-        for entry in rispy.loads(text):
-            if "doi" in entry and (cleaned := clean_doi(entry["doi"])):
-                dois.add(cleaned)
-    except Exception:
-        pass
-    return list(dois)
+    return _parse_generic(text, rispy.loads, "doi")
 
 
 def _parse_endnote_xml(text: str) -> list[str]:
@@ -54,14 +56,7 @@ def _parse_endnote_xml(text: str) -> list[str]:
 
 def _parse_json(text: str) -> list[str]:
     """Extracts DOIs from a Zotero-style JSON export."""
-    dois = set()
-    try:
-        for item in json.loads(text):
-            if item.get("DOI") and (cleaned := clean_doi(item["DOI"])):
-                dois.add(cleaned)
-    except Exception:
-        pass
-    return list(dois)
+    return _parse_generic(text, json.loads, "DOI")
 
 
 def _parse_plain_text(text: str) -> list[str]:
@@ -71,6 +66,15 @@ def _parse_plain_text(text: str) -> list[str]:
         if cleaned := clean_doi(match):
             dois.add(cleaned)
     return list(dois)
+
+
+def _detect_parser_from_content(text: str) -> Callable[[str], list[str]]:
+    """Detects the appropriate parser based on file content."""
+    if "TY  -" in text and "ER  -" in text:
+        return _parse_ris
+    elif "@article" in text.lower() or "@book" in text.lower():
+        return _parse_bibtex
+    return _parse_plain_text
 
 
 def extract_dois_from_file(filepath: str) -> list[str]:
@@ -85,21 +89,19 @@ def extract_dois_from_file(filepath: str) -> list[str]:
     text = p.read_text(encoding="utf-8", errors="ignore")
     ext = p.suffix.lower()
 
-    if ext == ".bib":
-        dois = _parse_bibtex(text)
-    elif ext == ".ris":
-        dois = _parse_ris(text)
-    elif ext in [".xml", ".enw"]:
-        dois = _parse_endnote_xml(text)
-    elif ext == ".json":
-        dois = _parse_json(text)
+    parser_map = {
+        ".bib": _parse_bibtex,
+        ".ris": _parse_ris,
+        ".xml": _parse_endnote_xml,
+        ".enw": _parse_endnote_xml,
+        ".json": _parse_json,
+    }
+
+    if ext in parser_map:
+        dois = parser_map[ext](text)
     elif ext in [".txt", ".csv"]:
-        if "TY  -" in text and "ER  -" in text:
-            dois = _parse_ris(text)
-        elif "@article" in text.lower() or "@book" in text.lower():
-            dois = _parse_bibtex(text)
-        else:
-            dois = _parse_plain_text(text)
+        parser = _detect_parser_from_content(text)
+        dois = parser(text)
     else:
         dois = _parse_plain_text(text)
 

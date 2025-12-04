@@ -38,6 +38,24 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 
+def _find_pdf_suffix_link(soup: BeautifulSoup, url: str) -> str | None:
+    for link in soup.find_all("a", href=True):
+        href = link["href"]
+        if href.lower().endswith(".pdf"):
+            if not href.startswith("http"):
+                href = urljoin(url, href)
+            return href
+    return None
+
+def _find_download_pdf_text_link(soup: BeautifulSoup, url: str) -> str | None:
+    for link in soup.find_all("a", string=re.compile(r"download pdf", re.IGNORECASE)):
+        href = link.get("href")
+        if href:
+            if not href.startswith("http"):
+                href = urljoin(url, href)
+            return href
+    return None
+
 def find_pdf_link_on_page(url: str, session: requests.Session) -> str | None:
     """
     Tries to find a direct PDF link on a landing page using BeautifulSoup.
@@ -48,41 +66,27 @@ def find_pdf_link_on_page(url: str, session: requests.Session) -> str | None:
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Look for links that end in .pdf
-        for link in soup.find_all("a", href=True):
-            href = link["href"]
-            if href.lower().endswith(".pdf"):
-                if not href.startswith("http"):
-                    href = urljoin(url, href)
-                return href
+        if link := _find_pdf_suffix_link(soup, url):
+            return link
 
-        # Look for links that contain "download pdf"
-        for link in soup.find_all("a", string=re.compile(r"download pdf", re.IGNORECASE)):
-            href = link.get("href")
-            if href:
-                if not href.startswith("http"):
-                    href = urljoin(url, href)
-                return href
+        if link := _find_download_pdf_text_link(soup, url):
+            return link
 
         return None
 
     except (requests.RequestException, AttributeError):
         return None
 
-def format_authors_apa(authors: list[str] | None) -> str:
-    """
-    Formats a list of authors according to the 7th APA style, using only surnames.
-    """
-    if not authors:
-        return "Unknown Author"
-
+def _extract_surnames(authors: list[str]) -> list[str]:
     surnames = []
     for author in authors:
         if author:
             parts = author.strip().split(' ')
             if parts:
                 surnames.append(parts[-1])
+    return surnames
 
+def _format_surnames(surnames: list[str]) -> str:
     if not surnames:
         return "Unknown Author"
 
@@ -92,3 +96,13 @@ def format_authors_apa(authors: list[str] | None) -> str:
         return f"{surnames[0]} & {surnames[1]}"
     else:
         return f"{surnames[0]} et al."
+
+def format_authors_apa(authors: list[str] | None) -> str:
+    """
+    Formats a list of authors according to the 7th APA style, using only surnames.
+    """
+    if not authors:
+        return "Unknown Author"
+
+    surnames = _extract_surnames(authors)
+    return _format_surnames(surnames)

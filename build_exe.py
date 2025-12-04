@@ -45,21 +45,21 @@ def clean_build_artifacts():
         console.print(f"[yellow]⚠ Could not clean all artifacts: {e}[/yellow]")
 
 
-def run_build():
-    """Run the PyInstaller build process with a Rich display."""
-    console.rule("📦 Building Executable with PyInstaller", style="bold cyan")
-    clean_build_artifacts()
-
+def _verify_files() -> bool:
+    """Verify that required files exist."""
     console.print("Verifying required files...")
     if not MAIN_SCRIPT.exists():
         console.print(f"[red]✗ Error: Main script '{MAIN_SCRIPT}' not found.[/red]")
         return False
+    return True
 
-    pyinstaller_args = []
 
+def _build_pyinstaller_args() -> list[str]:
+    """Construct the arguments for PyInstaller."""
+    args = []
     if VERSION_FILE.exists():
         console.print("   [green]✓ Found version information[/green]")
-        pyinstaller_args.append(f"--version-file={VERSION_FILE}")
+        args.append(f"--version-file={VERSION_FILE}")
     else:
         console.print(
             f"   [yellow]⚠ Version file '{VERSION_FILE}' not found, building without metadata.[/yellow]"
@@ -67,36 +67,38 @@ def run_build():
 
     if ICON_FILE.exists():
         console.print("   [green]✓ Found icon file[/green]")
-        pyinstaller_args.append(f"--icon={ICON_FILE}")
+        args.append(f"--icon={ICON_FILE}")
     else:
         console.print(
             f"   [yellow]⚠ Icon file '{ICON_FILE}' not found, using default icon.[/yellow]"
         )
 
-    pyinstaller_args.extend(
+    args.extend(
         [
             "--onefile",
             "--windowed",
             f"--name={EXE_NAME.replace('.exe', '')}",
             "--clean",
             "--noconfirm",
-            # --- ADD THIS LINE ---
             f"--add-data={ICON_FILE}{os.pathsep}assets",
-            # --- END OF ADDED LINE ---
             "--hidden-import=bibtexparser",
             "--hidden-import=rispy",
             "--hidden-import=requests",
             "--hidden-import=msvcrt",
-            f"--paths={SCRIPT_DIR / 'src'}",  # Use absolute path for src
+            f"--paths={SCRIPT_DIR / 'src'}",
             "--exclude-module=tests",
             "--exclude-module=pytest",
-            str(MAIN_SCRIPT),  # Pass the absolute path to the script
+            str(MAIN_SCRIPT),
         ]
     )
+    return args
 
-    pyinstaller_cmd = [sys.executable, "-m", "PyInstaller"] + pyinstaller_args
 
+def _execute_pyinstaller(args: list[str]) -> bool:
+    """Execute the PyInstaller command."""
+    cmd = [sys.executable, "-m", "PyInstaller"] + args
     console.print(f"\nRunning PyInstaller for [cyan]{MAIN_SCRIPT.name}[/cyan]...")
+
     try:
         with Progress(
             SpinnerColumn(),
@@ -106,7 +108,7 @@ def run_build():
         ) as progress:
             task = progress.add_task(f"Building {EXE_NAME}...", total=None)
             result = subprocess.run(
-                pyinstaller_cmd,
+                cmd,
                 capture_output=True,
                 text=True,
                 check=True,
@@ -154,6 +156,18 @@ def run_build():
         return False
 
 
+def run_build():
+    """Run the PyInstaller build process with a Rich display."""
+    console.rule("📦 Building Executable with PyInstaller", style="bold cyan")
+    clean_build_artifacts()
+
+    if not _verify_files():
+        return False
+
+    args = _build_pyinstaller_args()
+    return _execute_pyinstaller(args)
+
+
 def find_signtool() -> Path | None:
     """Automatically find the path to signtool.exe."""
     if "ProgramFiles(x86)" not in os.environ:
@@ -172,39 +186,28 @@ def find_signtool() -> Path | None:
     return x64_tool or signtool_paths[0]
 
 
-def run_signing(exe_path, cli_password=None):
-    """Run code signing by automatically locating the .pfx and signtool.exe files."""
-    console.rule("🔐 Code Signing", style="bold yellow")
-
-    pfx_files = list(SCRIPT_DIR.rglob("*.pfx"))  # Use SCRIPT_DIR
+def _find_pfx_file() -> tuple[Path | None, bool]:
+    """
+    Find the .pfx file.
+    Returns: (path, success)
+    """
+    pfx_files = list(SCRIPT_DIR.rglob("*.pfx"))
     if not pfx_files:
         console.print(
             "[yellow]⚠ Signing skipped: No .pfx certificate file found.[/yellow]"
         )
-        return True
+        return None, True
     elif len(pfx_files) > 1:
         console.print(
             "[red]✗ Signing failed: Multiple .pfx files found. Please ensure only one is present.[/red]"
         )
-        return False
-    pfx_path = pfx_files[0]
+        return None, False
+    return pfx_files[0], True
 
-    signtool_path = find_signtool()
-    if not signtool_path:
-        console.print(
-            "[yellow]⚠ Signing skipped: Could not find signtool.exe in the Windows Kits directory.[/yellow]"
-        )
-        return True
 
-    console.print(f"   [green]✓ Found certificate:[/green] [dim]{pfx_path}[/dim]")
-    console.print(f"   [green]✓ Found signtool:[/green] [dim]{signtool_path}[/dim]")
-
+def _perform_signing(signtool_path: Path, pfx_path: Path, exe_path: Path, password: str) -> bool:
+    """Execute the signing and verification commands."""
     try:
-        if cli_password:
-            password = cli_password
-        else:
-            password = getpass.getpass("Enter PFX password: ")
-
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -257,22 +260,43 @@ def run_signing(exe_path, cli_password=None):
             Panel(error_output, title="Signing Error", style="red", border_style="red")
         )
         return False
+
+
+def run_signing(exe_path, cli_password=None):
+    """Run code signing by automatically locating the .pfx and signtool.exe files."""
+    console.rule("🔐 Code Signing", style="bold yellow")
+
+    pfx_path, success = _find_pfx_file()
+    if not success:
+        return False
+    if not pfx_path:
+        return True
+
+    signtool_path = find_signtool()
+    if not signtool_path:
+        console.print(
+            "[yellow]⚠ Signing skipped: Could not find signtool.exe in the Windows Kits directory.[/yellow]"
+        )
+        return True
+
+    console.print(f"   [green]✓ Found certificate:[/green] [dim]{pfx_path}[/dim]")
+    console.print(f"   [green]✓ Found signtool:[/green] [dim]{signtool_path}[/dim]")
+
+    try:
+        if cli_password:
+            password = cli_password
+        else:
+            password = getpass.getpass("Enter PFX password: ")
+
+        return _perform_signing(signtool_path, pfx_path, exe_path, password)
     except Exception as e:
         console.print(f"[red]✗ Signing error: {e}")
         return False
 
 
 # --- FINAL INTEGRATED HASHING FUNCTION ---
-def generate_and_save_hashes(exe_path: Path):
-    """Generate full internal hashes + public hash files."""
-    console.rule("🧮 Generating File Hashes", style="bold blue")
-
-    if not exe_path.exists():
-        console.print(
-            f"[red]✗ Cannot generate hashes: File not found at {exe_path}[/red]"
-        )
-        return
-
+def _calculate_hashes(exe_path: Path) -> dict[str, str]:
+    """Calculate hashes for the executable using multiple algorithms."""
     algorithms = {
         "SHA-256": hashlib.sha256,
         "SHA-512": hashlib.sha512,
@@ -297,7 +321,11 @@ def generate_and_save_hashes(exe_path: Path):
                     h.update(chunk)
             hash_results[name] = h.hexdigest()
             progress.update(task, advance=1)
+    return hash_results
 
+
+def _save_hash_files(exe_path: Path, hash_results: dict[str, str]):
+    """Save the calculated hashes to files."""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # ✅ Internal log with ALL algorithms
@@ -323,6 +351,40 @@ def generate_and_save_hashes(exe_path: Path):
     console.print(f"[green]✅ .sha256 checksum: {sha256_file}")
 
 
+def generate_and_save_hashes(exe_path: Path):
+    """Generate full internal hashes + public hash files."""
+    console.rule("🧮 Generating File Hashes", style="bold blue")
+
+    if not exe_path.exists():
+        console.print(
+            f"[red]✗ Cannot generate hashes: File not found at {exe_path}[/red]"
+        )
+        return
+
+    hash_results = _calculate_hashes(exe_path)
+    _save_hash_files(exe_path, hash_results)
+
+
+def _should_sign(args) -> bool:
+    """Determine if signing should be attempted."""
+    can_sign = any(SCRIPT_DIR.rglob("*.pfx")) and find_signtool()
+
+    if args.password:
+        console.print("\nPassword provided via argument, attempting to sign...")
+        return True
+
+    if can_sign:
+        sign = Prompt.ask(
+            "\nProceed with code signing?", choices=["y", "n"], default="y"
+        )
+        if sign.lower() == "y":
+            return True
+        else:
+            console.print("\n[yellow]Build completed without signing.[/yellow]")
+
+    return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Build and optionally sign the PDF Retriever CLI."
@@ -337,26 +399,10 @@ def main():
         return 1
 
     if EXE_PATH.exists():
-        # --- Signing Logic ---
-        can_sign = any(SCRIPT_DIR.rglob("*.pfx")) and find_signtool()  # Use SCRIPT_DIR
-        should_sign = False
-
-        if args.password:
-            console.print("\nPassword provided via argument, attempting to sign...")
-            should_sign = True
-        elif can_sign:
-            sign = Prompt.ask(
-                "\nProceed with code signing?", choices=["y", "n"], default="y"
-            )
-            if sign.lower() == "y":
-                should_sign = True
-
-        if should_sign:
+        if _should_sign(args):
             if not run_signing(EXE_PATH, cli_password=args.password):
                 console.print("[yellow]⚠ Build completed but signing failed.[/yellow]")
-        elif can_sign:
-            console.print("\n[yellow]Build completed without signing.[/yellow]")
-
+        
         # --- Hashing is now the final step in the workflow ---
         generate_and_save_hashes(EXE_PATH)
 

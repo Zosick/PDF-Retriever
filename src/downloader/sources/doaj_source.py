@@ -1,6 +1,6 @@
-# downloader/zenodo_source.py
+# downloader/doaj_source.py
 """
-Defines the source for Zenodo.
+Defines the source for the Directory of Open Access Journals (DOAJ).
 """
 import logging
 from pathlib import Path
@@ -9,52 +9,52 @@ from urllib.parse import quote_plus
 
 import requests
 
-from . import config
-from .sources import Source
+from src.downloader import config
+from .base import Source
 
 log = logging.getLogger(__name__)
 
 
-class ZenodoSource(Source):
+class DOAJSource(Source):
     """
-    A source for finding open access articles from Zenodo.
+    A source for finding open access articles from the DOAJ.
     """
 
     def __init__(self, session: requests.Session):
         super().__init__(session)
-        self.api_url = config.ZENODO_API_URL
+        self.api_url = config.DOAJ_API_URL
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
         """
-        Gets the metadata for a given DOI from the Zenodo API.
+        Gets the metadata for a given DOI from the DOAJ API.
         """
         try:
-            # --- MODIFIED: URL-encode the DOI in the query ---
-            search_url = f'{self.api_url}records?q=doi:"{quote_plus(doi)}"'
+            # --- MODIFIED: URL-encode the DOI ---
+            search_url = f"{self.api_url}search/articles/doi:{quote_plus(doi)}"
             response = self._make_request(search_url)
             if not response:
                 return None
 
             data = response.json()
-            if data.get("hits", {}).get("total", 0) == 0:
+            if data.get("total", 0) == 0:
                 log.debug(f"[{self.name}] No results found for DOI: {doi}")
                 return None
 
             # The first result is the most likely match
-            result = data.get("hits", {}).get("hits", [])[0]
-            metadata = result.get("metadata", {})
+            result = data.get("results", [])[0]
+            bibjson = result.get("bibjson", {})
 
-            title = metadata.get("title", "Unknown Title")
-            year = metadata.get("publication_date", "Unknown").split("-")[0]
+            title = bibjson.get("title", "Unknown Title")
+            year = bibjson.get("year", "Unknown")
 
-            # Find the PDF URL
+            # Find the full-text URL
             pdf_url = None
-            for f in result.get("files", []):
-                if f.get("type") == "pdf":
-                    pdf_url = f.get("links", {}).get("self")
+            for identifier in bibjson.get("identifier", []):
+                if identifier.get("type") == "fulltext":
+                    pdf_url = identifier.get("id")
                     break
 
-            authors = [creator.get("name") for creator in metadata.get("creators", [])]
+            authors = [author.get("name") for author in bibjson.get("author", [])]
 
             return {
                 "title": title,
@@ -70,7 +70,7 @@ class ZenodoSource(Source):
 
     def download(self, doi: str, filepath: Path, metadata: dict[str, Any]) -> bool:
         """
-        Downloads the PDF for a given DOI from Zenodo.
+        Downloads the PDF for a given DOI from the DOAJ.
         """
         pdf_url = metadata.get("_pdf_url")
         if not pdf_url:

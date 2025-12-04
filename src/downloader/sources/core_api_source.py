@@ -4,8 +4,8 @@ from urllib.parse import quote_plus
 
 import requests
 
-from . import config
-from .sources import Source
+from src.downloader import config
+from .base import Source
 
 log = logging.getLogger(__name__)
 
@@ -18,11 +18,12 @@ class CoreApiSource(Source):
     def _get_data(self, doi: str):
         if not self.api_key: return None
         try:
-            url = config.CORE_API_URL.format(doi=quote_plus(doi))
+            url = self.api_url.format(doi=quote_plus(doi))
             headers = {"Authorization": f"Bearer {self.api_key}"}
             resp = self._make_request(url, headers=headers, timeout=10)
             if resp and resp.status_code == 200: return resp.json()
-        except Exception: pass
+        except Exception as e:
+            log.error(f"[{self.name}] Failed to get data for DOI {doi}: {e}", exc_info=True)
         return None
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:

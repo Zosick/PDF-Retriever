@@ -8,7 +8,7 @@ import threading
 import time
 from concurrent.futures import CancelledError
 from pathlib import Path
-from unittest.mock import call
+from unittest.mock import call, patch
 
 import pytest
 
@@ -17,11 +17,11 @@ from downloader.download_manager import DownloadManager
 
 
 @pytest.fixture
-def mock_downloader_class(mocker):
+def mock_downloader_class():
     """Mocks the Downloader class at the class level."""
     # This is the correct path to patch, where Downloader is *used*
-    mock = mocker.patch("downloader.download_manager.Downloader", autospec=True)
-    return mock
+    with patch("downloader.download_manager.Downloader", autospec=True) as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -98,15 +98,14 @@ def test_download_success_happy_path(test_manager_components, mock_downloader_in
 
 
 # --- MODIFIED: This test is now self-contained and correct ---
-def test_download_cancellation(mocker):
+@patch("downloader.download_manager.Downloader", autospec=True)
+def test_download_cancellation(mock_downloader_class):
     """
     Tests that the download process stops cleanly when 'cancel()' is called.
     This test is self-contained and does not use the fixtures above.
     """
     # 1. Patch the Downloader class *before* it's instantiated
-    mock_downloader_class = mocker.patch(
-        "downloader.download_manager.Downloader", autospec=True
-    )
+    # mock_downloader_class is passed as argument by @patch
 
     # This Event lets our test control the "long-running" task
     long_task_event = threading.Event()
