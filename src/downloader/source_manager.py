@@ -1,6 +1,7 @@
-import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
+
+import requests
 
 from .sources import (
     ArxivSource,
@@ -16,6 +17,7 @@ from .sources import (
     UnpaywallSource,
     ZenodoSource,
 )
+
 
 class SourceManager:
     def __init__(self, session: requests.Session, email: str, core_api_key: str | None):

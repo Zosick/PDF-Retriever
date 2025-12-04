@@ -1,7 +1,6 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
-from pathlib import Path
 
 # Mock dependencies
 sys.modules["msvcrt"] = MagicMock()
@@ -24,7 +23,8 @@ sys.modules["src.downloader.core"] = MagicMock()
 sys.modules["src.downloader.parsers"] = MagicMock()
 sys.modules["src.downloader.utils"] = MagicMock()
 
-from src.downloader.tui import get_single_key, get_settings, get_dois, run_download
+from src.downloader.tui import get_dois, get_settings, get_single_key, run_download
+
 
 class TestTUI(unittest.TestCase):
     def test_get_single_key_windows(self):

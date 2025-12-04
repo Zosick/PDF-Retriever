@@ -5,6 +5,7 @@ from urllib.parse import quote_plus
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -16,22 +17,34 @@ class UnpaywallSource(Source):
         self.api_url = config.UNPAYWALL_API_URL
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
-        if not self.email: return None
+        if not self.email:
+            log.warning(f"[{self.name}] Email not configured, skipping Unpaywall.")
+            return None
         try:
             url = config.UNPAYWALL_API_URL.format(doi=quote_plus(doi))
             response = self._make_request(url, params={"email": self.email}, timeout=10)
             if not response: return None
             data = response.json()
             
+            authors = []
+            for a in data.get("z_authors", []):
+                given = a.get("given", "").strip()
+                family = a.get("family", "").strip()
+                full_name = f"{given} {family}".strip()
+                if full_name:
+                    authors.append(full_name)
+
+            best_oa = data.get("best_oa_location") or {}
+            
             return {
                 "year": str(data.get("year", "Unknown")),
                 "title": data.get("title", "Unknown Title"),
-                "authors": [a.get("family") for a in data.get("z_authors", [])],
+                "authors": authors,
                 "doi": doi,
-                "_pdf_url": (data.get("best_oa_location") or {}).get("url_for_pdf")
+                "_pdf_url": best_oa.get("url_for_pdf")
             }
-        except Exception as e:
-            log.warning(f"Unpaywall error for {doi}: {e}")
+        except (requests.RequestException, ValueError, KeyError) as e:
+            log.warning(f"[{self.name}] Unpaywall error for {doi}: {e}")
             return None
 
     def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:

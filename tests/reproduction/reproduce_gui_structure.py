@@ -17,9 +17,9 @@ sys.modules["src.downloader.settings_manager"] = MagicMock()
 
 try:
     from src.downloader.gui.app import App
-    from src.downloader.gui.settings_frame import SettingsFrame
-    from src.downloader.gui.doi_frame import DoiFrame
-    from src.downloader.gui.right_frame import RightFrame
+    # from src.downloader.gui.doi_frame import DoiFrame
+    # from src.downloader.gui.right_frame import RightFrame
+    # from src.downloader.gui.settings_frame import SettingsFrame
     
     print("SUCCESS: Imports successful.")
     

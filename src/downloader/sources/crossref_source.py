@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -28,12 +29,22 @@ class CrossrefSource(Source):
     @staticmethod
     def _extract_year(message: dict) -> str | None:
         """Extracts the publication year from the message."""
-        if "published-print" in message and "date-parts" in message["published-print"]:
-            return message["published-print"]["date-parts"][0][0]
-        elif "published-online" in message and "date-parts" in message["published-online"]:
-            return message["published-online"]["date-parts"][0][0]
-        elif "issued" in message and "date-parts" in message["issued"]:
-            return message["issued"]["date-parts"][0][0]
+        def _get_year_from_parts(parts):
+            if parts and isinstance(parts, list) and len(parts) > 0:
+                first_part = parts[0]
+                if first_part and isinstance(first_part, list) and len(first_part) > 0:
+                    return first_part[0]
+            return None
+
+        if "published-print" in message:
+            if year := _get_year_from_parts(message["published-print"].get("date-parts")):
+                return year
+        if "published-online" in message:
+            if year := _get_year_from_parts(message["published-online"].get("date-parts")):
+                return year
+        if "issued" in message:
+            if year := _get_year_from_parts(message["issued"].get("date-parts")):
+                return year
         return None
 
     @staticmethod

@@ -1,13 +1,13 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import requests
 
 # Mock internal modules
 sys.modules["src.downloader.config"] = MagicMock()
 sys.modules["src.downloader.config"].MAX_FILENAME_LEN = 255
 
 from src.downloader.utils import find_pdf_link_on_page, format_authors_apa
+
 
 class TestUtils(unittest.TestCase):
     def test_format_authors_apa(self):

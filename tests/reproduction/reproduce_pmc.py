@@ -1,11 +1,11 @@
 import sys
 from unittest.mock import MagicMock
-import xml.etree.ElementTree as ET
 
 # Mock requests
 sys.modules["requests"] = MagicMock()
 
 from src.downloader.sources import PubMedCentralSource
+
 
 def test_get_metadata():
     mock_session = MagicMock()

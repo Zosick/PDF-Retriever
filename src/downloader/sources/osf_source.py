@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -58,12 +59,21 @@ class OSFSource(Source):
     def _parse_metadata(self, data: dict[str, Any], doi: str) -> dict[str, Any]:
         """Parses the OSF metadata response."""
         # The first result is the most likely match
-        result = data.get("data", [])[0]
-        attributes = result.get("attributes", {})
-
-        title = attributes.get("title", "Unknown Title")
-        date_published = attributes.get("date_published")
-        year = date_published.split("-")[0] if isinstance(date_published, str) and date_published else "Unknown"
+        data_list = data.get("data") or []
+        if not data_list:
+            attributes = {}
+            title = "Unknown Title"
+            year = "Unknown"
+            result = {}
+        else:
+            result = data_list[0]
+            attributes = result.get("attributes", {})
+            title = attributes.get("title", "Unknown Title")
+            date_published = attributes.get("date_published")
+            if isinstance(date_published, str) and date_published and "-" in date_published:
+                year = date_published.split("-")[0]
+            else:
+                year = "Unknown"
 
         # Find the PDF URL
         pdf_url = None

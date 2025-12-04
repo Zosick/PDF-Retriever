@@ -1,12 +1,13 @@
 import logging
 from pathlib import Path
 from typing import Any
-from xml.etree.ElementTree import ParseError
+from xml.etree.ElementTree import Element, ParseError
 
 import defusedxml.ElementTree as ET
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class PubMedCentralSource(Source):
             return None
         return id_list[0]
 
-    def _fetch_metadata_xml(self, pmcid: str) -> ET.Element | None:
+    def _fetch_metadata_xml(self, pmcid: str) -> Element | None:
         """Fetches metadata XML for a given PMCID using EFetch."""
         efetch_url = f"{self.api_url}efetch.fcgi"
         params = {
@@ -56,7 +57,7 @@ class PubMedCentralSource(Source):
         except (ParseError, ValueError):
             return None
 
-    def _parse_metadata_xml(self, root: ET.Element, doi: str, pmcid: str) -> dict[str, Any]:
+    def _parse_metadata_xml(self, root: Element, doi: str, pmcid: str) -> dict[str, Any]:
         """Parses the metadata XML to extract title, year, authors, etc."""
         title = root.findtext(".//article-title") or "Unknown Title"
         year = root.findtext(".//pub-date/year") or "Unknown"

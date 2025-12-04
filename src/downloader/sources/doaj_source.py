@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -41,7 +42,12 @@ class DOAJSource(Source):
                 return None
 
             # The first result is the most likely match
-            result = data.get("results", [])[0]
+            results = data.get("results") or []
+            if not results:
+                log.debug(f"[{self.name}] No results found for DOI: {doi}")
+                return None
+
+            result = results[0]
             bibjson = result.get("bibjson", {})
 
             title = bibjson.get("title", "Unknown Title")

@@ -1,11 +1,10 @@
-import sys
-import unittest
-from unittest.mock import MagicMock, patch
-from pathlib import Path
 import tempfile
-import os
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from src.downloader.sources import Source
+
 
 class TestSource(Source):
     def download(self, doi, filepath, metadata):

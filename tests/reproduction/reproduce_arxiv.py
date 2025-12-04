@@ -1,5 +1,10 @@
-import logging
-import sys
+import requests
+
+from src.downloader.sources import ArxivSource
+
+
+def test_arxiv_metadata():
+    session = requests.Session()
     source = ArxivSource(session)
     
     # Known Arxiv DOI: Attention Is All You Need

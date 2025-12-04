@@ -1,9 +1,7 @@
 import logging
 import queue
-import threading
-import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from src.downloader.download_manager import DownloadManager
 
@@ -83,7 +81,7 @@ def test_download_manager_run():
             
         # Check fail log
         if failed_dois_path.exists():
-            with open(failed_dois_path, "r") as f:
+            with open(failed_dois_path) as f:
                 content = f.read()
                 print(f"Fail log content: {content.strip()}")
                 if "10.1234/test3" in content:

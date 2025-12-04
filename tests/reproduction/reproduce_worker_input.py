@@ -11,6 +11,7 @@ sys.modules["rispy"] = MagicMock()
 
 from src.downloader.tui import _prompt_for_workers
 
+
 class TestWorkerInput(unittest.TestCase):
     @patch("src.downloader.tui.Prompt.ask")
     def test_prompt_for_workers_invalid_input(self, mock_ask):

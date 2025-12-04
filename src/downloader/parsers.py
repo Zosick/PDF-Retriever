@@ -3,11 +3,12 @@
 
 import json
 import re
-import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import bibtexparser
+import defusedxml.ElementTree as ET
 import rispy
 
 from .utils import clean_doi

@@ -68,6 +68,7 @@ def _build_pyinstaller_args() -> list[str]:
     if ICON_FILE.exists():
         console.print("   [green]✓ Found icon file[/green]")
         args.append(f"--icon={ICON_FILE}")
+        args.append(f"--add-data={ICON_FILE}{os.pathsep}assets")
     else:
         console.print(
             f"   [yellow]⚠ Icon file '{ICON_FILE}' not found, using default icon.[/yellow]"
@@ -80,7 +81,6 @@ def _build_pyinstaller_args() -> list[str]:
             f"--name={EXE_NAME.replace('.exe', '')}",
             "--clean",
             "--noconfirm",
-            f"--add-data={ICON_FILE}{os.pathsep}assets",
             "--hidden-import=bibtexparser",
             "--hidden-import=rispy",
             "--hidden-import=requests",
@@ -152,7 +152,7 @@ def _execute_pyinstaller(args: list[str]) -> bool:
         )
         return False
     except Exception as e:
-        console.print(f"[red]✗ An unexpected error occurred during build: {e}")
+        console.print(f"[red]✗ An unexpected error occurred during build: {e}[/red]")
         return False
 
 
@@ -290,7 +290,7 @@ def run_signing(exe_path, cli_password=None):
 
         return _perform_signing(signtool_path, pfx_path, exe_path, password)
     except Exception as e:
-        console.print(f"[red]✗ Signing error: {e}")
+        console.print(f"[red]✗ Signing error: {e}[/red]")
         return False
 
 

@@ -1,9 +1,11 @@
-import logging
-import sys
-import os
-    
+from unittest.mock import MagicMock, patch
+
+from src.downloader.core import Downloader
+
+
+def test_download_one_flow():
     # Mock dependencies
-    with patch("downloader.core.SourceManager") as MockSourceManager:
+    with patch("src.downloader.core.SourceManager") as _:
         
         # Setup mocks
         downloader = Downloader("downloads", "test@example.com", "key")

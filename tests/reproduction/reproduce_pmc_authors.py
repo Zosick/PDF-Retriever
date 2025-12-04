@@ -1,7 +1,9 @@
 import unittest
 import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock
+
 from src.downloader.sources import PubMedCentralSource
+
 
 class TestPMCAuthors(unittest.TestCase):
     def test_parse_metadata_authors_with_none(self):

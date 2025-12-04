@@ -1,8 +1,10 @@
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
+
 from src.downloader.sources import Source
+
 
 class TestSmallPDF(unittest.TestCase):
     def setUp(self):

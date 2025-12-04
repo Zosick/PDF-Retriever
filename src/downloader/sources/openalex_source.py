@@ -5,6 +5,7 @@ from urllib.parse import quote_plus
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)

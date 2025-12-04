@@ -1,5 +1,6 @@
 import customtkinter
 
+
 class DoiFrame(customtkinter.CTkFrame):
     """Frame for DOI input and file loading."""
 

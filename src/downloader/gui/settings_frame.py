@@ -1,5 +1,6 @@
 import customtkinter
 
+
 class SettingsFrame(customtkinter.CTkScrollableFrame):
     """Frame for all user-configurable settings."""
 
@@ -25,6 +26,7 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
             self.email_entry,
             self.show_email_checkbox,
             self.core_api_key_entry,
+            self.show_core_api_key_checkbox,
             self.ssl_checkbox,
             self.parallel_downloads_slider,
             self.save_settings_button,
@@ -54,36 +56,38 @@ class SettingsFrame(customtkinter.CTkScrollableFrame):
         self.browse_button.grid(row=self.current_row, column=1, padx=(0, 10), pady=(0, 5))
         self.current_row += 1
 
-    def _create_email_widgets(self):
-        self.email_label = customtkinter.CTkLabel(self, text="Unpaywall Email")
-        self.email_label.grid(
+    def _add_secured_entry_section(self, label_text, toggle_command):
+        label = customtkinter.CTkLabel(self, text=label_text)
+        label.grid(
             row=self.current_row, column=0, columnspan=2, padx=10, pady=(5, 0), sticky="w"
         )
         self.current_row += 1
-        self.email_entry = customtkinter.CTkEntry(self, show="*")
-        self.email_entry.grid(row=self.current_row, column=0, padx=10, pady=(0, 5), sticky="we")
-        self.show_email_checkbox = customtkinter.CTkCheckBox(
+        
+        entry = customtkinter.CTkEntry(self, show="*")
+        entry.grid(row=self.current_row, column=0, padx=10, pady=(0, 5), sticky="we")
+        
+        checkbox = customtkinter.CTkCheckBox(
             self,
             text="Show",
             checkbox_width=18,
             checkbox_height=18,
-            command=self.controller.toggle_email_visibility,
+            command=toggle_command,
             text_color=("gray10", "#DCE4EE"),
         )
-        self.show_email_checkbox.grid(row=self.current_row, column=1, padx=(0, 10), pady=(0, 5))
+        checkbox.grid(row=self.current_row, column=1, padx=(0, 10), pady=(0, 5))
         self.current_row += 1
+        
+        return entry, checkbox
+
+    def _create_email_widgets(self):
+        self.email_entry, self.show_email_checkbox = self._add_secured_entry_section(
+            "Unpaywall Email", self.controller.toggle_email_visibility
+        )
 
     def _create_core_api_widgets(self):
-        self.core_api_key_label = customtkinter.CTkLabel(self, text="CORE API Key")
-        self.core_api_key_label.grid(
-            row=self.current_row, column=0, columnspan=2, padx=10, pady=(5, 0), sticky="w"
+        self.core_api_key_entry, self.show_core_api_key_checkbox = self._add_secured_entry_section(
+            "CORE API Key", self.controller.toggle_core_api_key_visibility
         )
-        self.current_row += 1
-        self.core_api_key_entry = customtkinter.CTkEntry(self, show="*")
-        self.core_api_key_entry.grid(
-            row=self.current_row, column=0, columnspan=2, padx=10, pady=(0, 5), sticky="we"
-        )
-        self.current_row += 1
 
     def _create_ssl_widget(self):
         self.ssl_checkbox = customtkinter.CTkCheckBox(

@@ -1,5 +1,7 @@
 from typing import Any
+
 from .utils import format_authors_apa, safe_filename
+
 
 class FilenameGenerator:
     def generate_filename(self, metadata: dict[str, Any]) -> str:

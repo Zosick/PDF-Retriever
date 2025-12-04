@@ -1,7 +1,6 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import logging
 
 # Mock dependencies
 sys.modules["src.downloader.settings_manager"] = MagicMock()
@@ -9,6 +8,7 @@ sys.modules["src.downloader.tui"] = MagicMock()
 sys.modules["rich.logging"] = MagicMock()
 
 from src.downloader.cli import main
+
 
 class TestCLI(unittest.TestCase):
     @patch("src.downloader.cli.show_main_panel")

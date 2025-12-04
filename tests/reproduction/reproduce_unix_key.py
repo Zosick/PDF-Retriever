@@ -11,6 +11,7 @@ sys.modules["rispy"] = MagicMock()
 
 from src.downloader.tui import _get_key_unix
 
+
 class TestUnixKey(unittest.TestCase):
     @patch("src.downloader.tui.sys.stdin")
     def test_escape_sequence(self, mock_stdin):

@@ -1,6 +1,7 @@
 import os
 import queue
 import re
+import subprocess
 import sys
 import threading
 from pathlib import Path
@@ -13,7 +14,6 @@ from ..core import Downloader
 from ..download_manager import DownloadManager
 from ..protocol import ProgressQueue
 from ..utils import clean_doi
-
 from .doi_frame import DoiFrame
 from .right_frame import RightFrame
 from .settings_frame import SettingsFrame
@@ -186,6 +186,12 @@ class App(customtkinter.CTk):
             self.settings_frame.email_entry.configure(show="")
         else:
             self.settings_frame.email_entry.configure(show="*")
+
+    def toggle_core_api_key_visibility(self):
+        if self.settings_frame.show_core_api_key_checkbox.get():
+            self.settings_frame.core_api_key_entry.configure(show="")
+        else:
+            self.settings_frame.core_api_key_entry.configure(show="*")
 
     def load_dois_from_file(self):
         filepath = filedialog.askopenfilename()
@@ -463,27 +469,34 @@ class App(customtkinter.CTk):
             return
 
         try:
+            path_str = str(fp.resolve())
             if sys.platform == "win32":
-                os.startfile(fp)
+                os.startfile(path_str)
             elif sys.platform == "darwin":
-                os.system(f'open "{fp}"')
+                subprocess.run(["open", path_str], check=True)
             else:
-                os.system(f'xdg-open "{fp}"')
+                subprocess.run(["xdg-open", path_str], check=True)
         except Exception as e:
             self.log_message(f"Error opening failed DOIs file: {e}", "red")
 
     def open_output_folder(self):
         output_dir = self.settings_frame.output_dir_entry.get()
         if output_dir:
-            if not Path(output_dir).exists():
+            path = Path(output_dir)
+            if not path.exists():
                 self.log_message(f"Error: Output directory does not exist: {output_dir}", "red")
                 return
-            if sys.platform == "win32":
-                os.startfile(output_dir)
-            elif sys.platform == "darwin":
-                os.system(f'open "{output_dir}"')
-            else:
-                os.system(f'xdg-open "{output_dir}"')
+            
+            try:
+                path_str = str(path.resolve())
+                if sys.platform == "win32":
+                    os.startfile(path_str)
+                elif sys.platform == "darwin":
+                    subprocess.run(["open", path_str], check=True)
+                else:
+                    subprocess.run(["xdg-open", path_str], check=True)
+            except Exception as e:
+                self.log_message(f"Error opening output folder: {e}", "red")
         else:
             self.log_message("Error: Output directory is not set.", "red")
 
@@ -492,7 +505,7 @@ class App(customtkinter.CTk):
         test_thread.start()
 
     def test_status_thread(self):
-        self.log_message("--- Testing System Status ---")
+        self.after(0, self.log_message, "--- Testing System Status ---")
         settings = {
             "output_dir": self.settings_frame.output_dir_entry.get(),
             "email": self.settings_frame.email_entry.get(),
@@ -501,7 +514,7 @@ class App(customtkinter.CTk):
         }
         output_dir = settings["output_dir"]
         if not output_dir:
-            self.log_message("Error: Output directory is not set.", "red")
+            self.after(0, self.log_message, "Error: Output directory is not set.", "red")
             return
 
         downloader = Downloader(
@@ -513,8 +526,8 @@ class App(customtkinter.CTk):
         results = downloader.test_connections()
         results.sort(key=lambda r: r.get("name", "Z_Fallback"))
 
-        self.log_message(f"{'Source':<20} {'Status':<8} {'Details'}")
-        self.log_message("-" * 50)
+        self.after(0, self.log_message, f"{'Source':<20} {'Status':<8} {'Details'}")
+        self.after(0, self.log_message, "-" * 50)
         for result in results:
             status = "OK" if result.get("status") else "FAILED"
             self.after(

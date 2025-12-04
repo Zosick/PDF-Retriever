@@ -1,10 +1,9 @@
 import logging
 import threading
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.downloader.download_pipeline import DownloadPipeline
-from src.downloader.types import DownloadContext
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

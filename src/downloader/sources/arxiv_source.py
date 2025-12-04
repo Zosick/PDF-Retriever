@@ -1,11 +1,12 @@
 import logging
 import re
-import xml.etree.ElementTree as ET
 from typing import Any
 
+import defusedxml.ElementTree as ET
 import requests
 
 from src.downloader import config
+
 from .base import Source
 
 log = logging.getLogger(__name__)
@@ -64,7 +65,8 @@ class ArxivSource(Source):
                 "authors": authors,
                 "doi": doi
             }
-        except Exception:
+        except Exception as e:
+            log.error(f"[{self.name}] XML parsing failed for {doi}: {e}", exc_info=True)
             return None
 
     def get_metadata(self, doi: str) -> dict[str, Any] | None:
@@ -76,7 +78,9 @@ class ArxivSource(Source):
             if not resp: return None
             
             return self._parse_metadata_from_xml(resp.text, doi)
-        except Exception: return None
+        except Exception as e:
+            log.error(f"[{self.name}] Metadata request failed for {doi}: {e}", exc_info=True)
+            return None
 
     def download(self, doi: str, filepath, metadata: dict[str, Any]) -> bool:
         arxiv_id = self._get_arxiv_id(doi)

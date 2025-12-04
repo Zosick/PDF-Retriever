@@ -1,5 +1,6 @@
+
 import customtkinter
-import threading
+
 
 class RightFrame(customtkinter.CTkFrame):
     """Frame for logging, progress, and utility buttons."""

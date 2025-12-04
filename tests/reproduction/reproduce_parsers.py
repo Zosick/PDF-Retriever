@@ -1,7 +1,7 @@
 import os
 import sys
-from unittest.mock import MagicMock
 from pathlib import Path
+from unittest.mock import MagicMock
 
 # Mock bibtexparser and rispy
 sys.modules["bibtexparser"] = MagicMock()
@@ -30,6 +30,7 @@ def mock_rispy_loads(text):
 sys.modules["rispy"].loads.side_effect = mock_rispy_loads
 
 from src.downloader.parsers import extract_dois_from_file
+
 
 def test_extract_dois():
     # Create dummy files
@@ -62,7 +63,7 @@ def test_extract_dois():
         for filename in files:
             try:
                 os.remove(filename)
-            except:
+            except Exception:
                 pass
 
 if __name__ == "__main__":
