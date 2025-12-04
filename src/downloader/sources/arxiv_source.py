@@ -3,6 +3,7 @@ import re
 from typing import Any
 
 import defusedxml.ElementTree as ET
+from xml.etree.ElementTree import Element
 import requests
 
 from src.downloader import config
@@ -24,7 +25,7 @@ class ArxivSource(Source):
             return m.group(1)
         return None
 
-    def _extract_authors(self, entry: ET.Element) -> list[str]:
+    def _extract_authors(self, entry: Element) -> list[str]:
         authors = []
         for author_elem in entry.findall('atom:author', self.ATOM_NS):
             name_elem = author_elem.find('atom:name', self.ATOM_NS)
@@ -32,7 +33,7 @@ class ArxivSource(Source):
                 authors.append(name_elem.text)
         return authors
 
-    def _extract_basic_info(self, entry: ET.Element) -> tuple[str, str] | None:
+    def _extract_basic_info(self, entry: Element) -> tuple[str, str] | None:
         published_elem = entry.find("atom:published", self.ATOM_NS)
         title_elem = entry.find("atom:title", self.ATOM_NS)
         if published_elem is None or title_elem is None:
