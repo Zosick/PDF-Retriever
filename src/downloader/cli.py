@@ -1,5 +1,6 @@
 # src/downloader/cli.py
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import sys
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from rich.logging import RichHandler
 
 from . import settings_manager
+from .settings_manager import CONFIG_DIR
 from .tui import (
     clear_config,
     console,
@@ -22,6 +24,8 @@ from .tui import (
     show_main_panel,
 )
 
+LOG_FILE = CONFIG_DIR / "app.log"
+
 
 def _setup_logging(settings):
     log_level_name = "DEBUG" if should_show_debug(settings or {}) else "WARNING"
@@ -31,17 +35,26 @@ def _setup_logging(settings):
         logging.WARNING if log_level == logging.DEBUG else logging.ERROR
     )
 
+    file_handler = RotatingFileHandler(
+        LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
+
     logging.basicConfig(
         level=log_level,
         format="%(message)s",
         handlers=[
             RichHandler(
                 console=console, show_path=False, rich_tracebacks=True, show_level=False
-            )
+            ),
+            file_handler,
         ],
     )
     logging.getLogger("urllib3").setLevel(requests_log_level)
     logging.getLogger("requests").setLevel(requests_log_level)
+
 
 def _update_logging(settings):
     new_log_level_name = "DEBUG" if should_show_debug(settings) else "WARNING"
@@ -54,6 +67,7 @@ def _update_logging(settings):
     logging.getLogger().setLevel(new_log_level)
     logging.getLogger("urllib3").setLevel(new_requests_log_level)
     logging.getLogger("requests").setLevel(new_requests_log_level)
+
 
 def _open_output_folder(settings):
     if not settings:
@@ -69,6 +83,7 @@ def _open_output_folder(settings):
     else:
         os.system(f'xdg-open "{out}"')
 
+
 def _handle_configure_settings(settings, dois):
     current = settings or {}
     settings = get_settings(current)
@@ -77,9 +92,11 @@ def _handle_configure_settings(settings, dois):
     _update_logging(settings)
     return settings, dois, True
 
+
 def _handle_input_dois(settings, dois):
     dois = get_dois(settings or {"ui_mode": settings_manager.DEFAULT_UI_MODE})
     return settings, dois, True
+
 
 def _handle_begin_download(settings, dois):
     if not settings:
@@ -91,15 +108,18 @@ def _handle_begin_download(settings, dois):
     input("\nPress Enter...")
     return settings, dois, True
 
+
 def _handle_view_failed(settings, dois):
     show_failed_dois(settings)
     input("\nPress Enter...")
     return settings, dois, True
 
+
 def _handle_open_output(settings, dois):
     _open_output_folder(settings)
     input("\nPress Enter...")
     return settings, dois, True
+
 
 def _handle_test_status(settings, dois):
     if not settings:
@@ -109,11 +129,13 @@ def _handle_test_status(settings, dois):
     input("\nPress Enter...")
     return settings, dois, True
 
+
 def _handle_clear_settings(settings, dois):
     clear_config()
     settings = None
     input("\nPress Enter...")
     return settings, dois, True
+
 
 def _handle_menu_choice(ch, settings, dois):
     handlers = {
@@ -132,6 +154,7 @@ def _handle_menu_choice(ch, settings, dois):
         return settings, dois, False
     
     return settings, dois, True
+
 
 def main():
     settings = load_config() or None

@@ -41,7 +41,7 @@ def setup_logging():
     log_file_path = os.path.join(log_dir, "pdf_retriever.log")
 
     file_handler = RotatingFileHandler(
-        log_file_path, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8"
+        log_file_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8"
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(log_format)
