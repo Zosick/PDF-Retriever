@@ -11,7 +11,12 @@ def setup_logging():
     """
 
     # --- 1. Create a dedicated 'logs' directory ---
-    log_dir = os.path.join(os.path.dirname(__file__), "logs")
+    if getattr(sys, 'frozen', False):
+        application_path = os.path.dirname(sys.executable)
+    else:
+        application_path = os.path.dirname(os.path.abspath(__file__))
+    
+    log_dir = os.path.join(application_path, "logs")
     os.makedirs(log_dir, exist_ok=True)
 
     # --- 2. Define the log format ---
@@ -44,15 +49,23 @@ def setup_logging():
 
 
 # --- Original code to add 'src' to path ---
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
+# --- Original code to add 'src' to path ---
+if not getattr(sys, 'frozen', False):
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
 
 # --- Now we can import the app ---
-from downloader.gui import main
+# from downloader.gui import main
 
 if __name__ == "__main__":
     # --- Run the logging setup *before* the app starts ---
     setup_logging()
 
     logging.info("Application starting...")
-    main()
+
+    try:
+        from downloader.gui import main
+        main()
+    except Exception:
+        logging.exception("Fatal error during application startup")
+        raise
     logging.info("Application closed.")
