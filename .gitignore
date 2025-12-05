@@ -26,6 +26,10 @@ output/
 temp/
 logs/
 *.pdf
+# Ignore temporary output logs
+output.txt
+output_error.txt
+*.log
 output*.txt
 
 # Security & Credentials
