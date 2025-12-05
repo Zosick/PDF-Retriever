@@ -49,7 +49,6 @@ def setup_logging():
 
 
 # --- Original code to add 'src' to path ---
-# --- Original code to add 'src' to path ---
 if not getattr(sys, 'frozen', False):
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "src")))
 
