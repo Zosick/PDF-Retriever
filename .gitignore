@@ -26,6 +26,7 @@ output/
 temp/
 logs/
 *.pdf
+output*.txt
 
 # Security & Credentials
 *.pfx
